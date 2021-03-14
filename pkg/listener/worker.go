@@ -1,0 +1,142 @@
+package listener
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"sync"
+	"time"
+
+	"github.com/snobb/goresq/pkg/db"
+	"github.com/snobb/goresq/pkg/job"
+)
+
+type Worker struct {
+	Track
+	runAt time.Time
+	pool  db.Pooler
+}
+
+func NewWorker(id int, namespace string, queues []string, pool db.Pooler) *Worker {
+	return &Worker{
+		Track: newStats(fmt.Sprintf("handler%d", id), namespace, queues),
+		runAt: time.Now(),
+		pool:  pool,
+	}
+}
+
+// Work is a method that starts job worker and processes jobs.
+func (w *Worker) Work(jobs <-chan *job.Job, wg *sync.WaitGroup) error {
+	wg.Add(1)
+	defer func() {
+		wg.Done()
+		w.untrack()
+	}()
+
+	runOnce := (os.Getenv("GORESQ_RUN_ONCE") != "")
+
+	if err := w.track(); err != nil {
+		return err
+	}
+
+	for jb := range jobs {
+		if jb == nil {
+			continue
+		}
+
+		conn, err := w.pool.Conn()
+		if err != nil {
+			return err
+		}
+		defer conn.Close()
+
+		err = w.run(conn, jb)
+		if err != nil {
+			w.fail(conn, jb, err)
+		} else {
+			w.success(conn, jb)
+		}
+
+		if runOnce {
+			break
+		}
+	}
+
+	return nil
+}
+
+func (w *Worker) run(conn db.Conn, jb *job.Job) error {
+	handler, ok := handlers[jb.Payload.Class]
+	if !ok {
+		return fmt.Errorf("Could not find a handler for job class %s", jb.Payload.Class)
+	}
+
+	for _, plugin := range handler.Plugins {
+		if err := plugin.BeforePerform(jb.Queue, jb.Payload.Class, jb.Payload.Args); err != nil {
+			return err
+		}
+	}
+
+	err := handler.Perform(jb.Queue, jb.Payload.Class, jb.Payload.Args)
+	if err != nil {
+		return err
+	}
+
+	for _, plugin := range handler.Plugins {
+		if err := plugin.AfterPerform(jb.Queue, jb.Payload.Class, jb.Payload.Args, err); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (w *Worker) untrack() error {
+	conn, err := w.pool.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	return w.Track.untrack(conn)
+}
+
+func (w *Worker) track() error {
+	conn, err := w.pool.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	return w.Track.track(conn)
+}
+
+func (w *Worker) success(conn db.Conn, job *job.Job) error {
+	return w.Track.success(conn)
+}
+
+func (w *Worker) fail(conn db.Conn, job *job.Job, err error) error {
+	resqueError := struct {
+		FailedAt  time.Time
+		Payload   json.RawMessage
+		Exception string
+		Error     string
+		Worker    string
+		Queue     string
+	}{
+		time.Now(),
+		job.Payload.Args[0],
+		"Error",
+		err.Error(),
+		w.String(),
+		job.Queue,
+	}
+
+	buf, err := json.Marshal(resqueError)
+	if err != nil {
+		return fmt.Errorf("Marshal failed during %w for job %v", err, job)
+	}
+
+	conn.Send("RPUSH", fmt.Sprintf("%sfailed", w.Namespace), buf)
+	return w.Track.fail(conn)
+}

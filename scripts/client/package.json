@@ -1,0 +1,10 @@
+{
+  "private": true,
+  "dependencies": {
+    "node-resque": "^8.2.4"
+  },
+  "devDependencies": {
+    "@types/ioredis": "^4.22.1",
+    "@types/node-resque": "^5.5.1"
+  }
+}
