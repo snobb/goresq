@@ -40,6 +40,7 @@ func main() {
 	})
 
 	l := listener.New(redis, time.Second*2)
+
 	listener.Register("test", &job.Handler{
 		Plugins: []job.PerformPlugin{&DelayPlugin{}},
 		Perform: func(queue, class string, args []json.RawMessage) error {

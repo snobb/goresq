@@ -19,7 +19,7 @@ type Worker struct {
 
 func NewWorker(id int, namespace string, queues []string, pool db.Pooler) *Worker {
 	return &Worker{
-		Track: newStats(fmt.Sprintf("handler%d", id), namespace, queues),
+		Track: newStats(fmt.Sprintf("worker%d", id), namespace, queues),
 		runAt: time.Now(),
 		pool:  pool,
 	}
@@ -137,6 +137,6 @@ func (w *Worker) fail(conn db.Conn, job *job.Job, err error) error {
 		return fmt.Errorf("Marshal failed during %w for job %v", err, job)
 	}
 
-	conn.Send("RPUSH", fmt.Sprintf("%sfailed", w.Namespace), buf)
+	conn.Send("RPUSH", fmt.Sprintf("%s:failed", w.Namespace), buf)
 	return w.Track.fail(conn)
 }

@@ -11,29 +11,16 @@ import (
 	"github.com/snobb/goresq/pkg/db/mock"
 	"github.com/snobb/goresq/pkg/job"
 	"github.com/snobb/goresq/pkg/listener"
+
+	"github.com/snobb/goresq/test/helpers"
 )
-
-func Marshal(payload interface{}) []byte {
-	res, err := json.Marshal(payload)
-	if err != nil {
-		panic(err)
-	}
-
-	return res
-}
-
-func assertEq(t *testing.T, exp, act interface{}) {
-	if exp != act {
-		t.Errorf("expected %v and %v to be equal", act, exp)
-	}
-}
 
 func TestWorker_Work(t *testing.T) {
 	hostname, err := os.Hostname()
 	if err != nil {
 		t.Errorf("could get the hostname: %s", err.Error())
 	}
-	workerID := fmt.Sprintf("%s:%d-handler1", hostname, os.Getpid())
+	workerID := fmt.Sprintf("%s:%d-worker1", hostname, os.Getpid())
 
 	tests := []struct {
 		name         string
@@ -50,13 +37,13 @@ func TestWorker_Work(t *testing.T) {
 				Queue: "queue1",
 				Payload: job.Payload{
 					Class: "test",
-					Args:  []json.RawMessage{json.RawMessage(Marshal(map[string]string{"foo": "bar"}))},
+					Args:  []json.RawMessage{json.RawMessage(helpers.Marshal(map[string]string{"foo": "bar"}))},
 				},
 			},
 			handler: &job.Handler{
 				Perform: func(queue, class string, args []json.RawMessage) error {
-					assertEq(t, "queue1", queue)
-					assertEq(t, "test", class)
+					helpers.AssertEq(t, "queue1", queue)
+					helpers.AssertEq(t, "test", class)
 					return nil
 				},
 			},
@@ -87,13 +74,13 @@ func TestWorker_Work(t *testing.T) {
 				Queue: "queue1",
 				Payload: job.Payload{
 					Class: "test",
-					Args:  []json.RawMessage{json.RawMessage(Marshal(map[string]string{"foo": "bar"}))},
+					Args:  []json.RawMessage{json.RawMessage(helpers.Marshal(map[string]string{"foo": "bar"}))},
 				},
 			},
 			handler: &job.Handler{
 				Perform: func(queue, class string, args []json.RawMessage) error {
-					assertEq(t, "queue1", queue)
-					assertEq(t, "test", class)
+					helpers.AssertEq(t, "queue1", queue)
+					helpers.AssertEq(t, "test", class)
 					return fmt.Errorf("spanner")
 				},
 			},
@@ -125,7 +112,7 @@ func TestWorker_Work(t *testing.T) {
 				Queue: "queue1",
 				Payload: job.Payload{
 					Class: "test",
-					Args:  []json.RawMessage{json.RawMessage(Marshal(map[string]string{"foo": "bar"}))},
+					Args:  []json.RawMessage{json.RawMessage(helpers.Marshal(map[string]string{"foo": "bar"}))},
 				},
 			},
 			wantErr:   true,
@@ -176,7 +163,7 @@ func TestWorker_Work(t *testing.T) {
 				},
 			}
 
-			w := listener.NewWorker(1, "resque:", []string{"queue1", "queue2"}, mockedPool)
+			w := listener.NewWorker(1, "resque", []string{"queue1", "queue2"}, mockedPool)
 			jobs <- &tt.job
 
 			if err := w.Work(jobs, &wg); (err != nil) != tt.wantErr {
@@ -184,7 +171,7 @@ func TestWorker_Work(t *testing.T) {
 			}
 
 			for i, cmd := range redisCmds {
-				assertEq(t, tt.wantCommands[i], cmd)
+				helpers.AssertEq(t, tt.wantCommands[i], cmd)
 			}
 		})
 	}

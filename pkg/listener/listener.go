@@ -24,7 +24,7 @@ func New(pool db.Pooler, interval time.Duration) *Listener {
 	handlers = make(map[string]*job.Handler)
 
 	return &Listener{
-		Namespace: "resque:",
+		Namespace: "resque",
 		interval:  interval,
 		pool:      pool,
 	}
@@ -100,7 +100,7 @@ func (l *Listener) poll(queues []string, quit signal.QuitChannel) (<-chan *job.J
 
 func (l *Listener) getJob(conn db.Conn, queues []string) (*job.Job, error) {
 	for _, queue := range queues {
-		res, err := conn.Do("LPOP", fmt.Sprintf("%squeue:%s", l.Namespace, queue))
+		res, err := conn.Do("LPOP", fmt.Sprintf("%s:queue:%s", l.Namespace, queue))
 		if err != nil {
 			return nil, err
 		}

@@ -37,36 +37,36 @@ func (t *Track) String() string {
 }
 
 func (t *Track) track(conn db.Conn) error {
-	conn.Send("SADD", fmt.Sprintf("%sworkers", t.Namespace), t)
-	conn.Send("SET", fmt.Sprintf("%sstat:processed:%v", t.Namespace, t), "0")
-	conn.Send("SET", fmt.Sprintf("%sstat:failed:%v", t.Namespace, t), "0")
-	conn.Send("SET", fmt.Sprintf("%sworker:%s:started", t.Namespace, t), int64(time.Now().Unix()))
+	conn.Send("SADD", fmt.Sprintf("%s:workers", t.Namespace), t)
+	conn.Send("SET", fmt.Sprintf("%s:stat:processed:%v", t.Namespace, t), "0")
+	conn.Send("SET", fmt.Sprintf("%s:stat:failed:%v", t.Namespace, t), "0")
+	conn.Send("SET", fmt.Sprintf("%s:worker:%s:started", t.Namespace, t), int64(time.Now().Unix()))
 
 	return nil
 }
 
 func (t *Track) untrack(conn db.Conn) error {
-	conn.Send("SREM", fmt.Sprintf("%sworkers", t.Namespace), t)
-	conn.Send("DEL", fmt.Sprintf("%sstat:processed:%s", t.Namespace, t))
-	conn.Send("DEL", fmt.Sprintf("%sstat:failed:%s", t.Namespace, t))
-	conn.Send("DEL", fmt.Sprintf("%sworker:%s", t.Namespace, t))
-	conn.Send("DEL", fmt.Sprintf("%sworker:%s:started", t.Namespace, t))
+	conn.Send("SREM", fmt.Sprintf("%s:workers", t.Namespace), t)
+	conn.Send("DEL", fmt.Sprintf("%s:stat:processed:%s", t.Namespace, t))
+	conn.Send("DEL", fmt.Sprintf("%s:stat:failed:%s", t.Namespace, t))
+	conn.Send("DEL", fmt.Sprintf("%s:worker:%s", t.Namespace, t))
+	conn.Send("DEL", fmt.Sprintf("%s:worker:%s:started", t.Namespace, t))
 	conn.Flush()
 
 	return nil
 }
 
 func (t *Track) success(conn db.Conn) error {
-	conn.Send("INCR", fmt.Sprintf("%sstat:processed", t.Namespace))
-	conn.Send("INCR", fmt.Sprintf("%sstat:processed:%s", t.Namespace, t))
+	conn.Send("INCR", fmt.Sprintf("%s:stat:processed", t.Namespace))
+	conn.Send("INCR", fmt.Sprintf("%s:stat:processed:%s", t.Namespace, t))
 	conn.Flush()
 
 	return nil
 }
 
 func (t *Track) fail(conn db.Conn) error {
-	conn.Send("INCR", fmt.Sprintf("%sstat:failed", t.Namespace))
-	conn.Send("INCR", fmt.Sprintf("%sstat:failed:%s", t.Namespace, t))
+	conn.Send("INCR", fmt.Sprintf("%s:stat:failed", t.Namespace))
+	conn.Send("INCR", fmt.Sprintf("%s:stat:failed:%s", t.Namespace, t))
 	conn.Flush()
 
 	return nil
