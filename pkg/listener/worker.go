@@ -19,7 +19,7 @@ type Worker struct {
 
 func NewWorker(id int, namespace string, queues []string, pool db.Pooler) *Worker {
 	return &Worker{
-		Track: newStats(fmt.Sprintf("worker%d", id), namespace, queues),
+		Track: newTrack(fmt.Sprintf("worker%d", id), namespace, queues),
 		runAt: time.Now(),
 		pool:  pool,
 	}

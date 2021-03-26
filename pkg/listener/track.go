@@ -17,7 +17,7 @@ type Track struct {
 	Queues    []string
 }
 
-func newStats(id, Namespace string, queues []string) Track {
+func newTrack(id, Namespace string, queues []string) Track {
 	hostname, err := os.Hostname()
 	if err != nil {
 		panic(err)
