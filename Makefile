@@ -12,6 +12,9 @@ fmt:
 test:
 	GORESQ_RUN_ONCE=1 go test -cover ./...
 
+run:
+	go run ./examples/...
+
 examples: vet fmt
 	go build -o ./bin/${TARGET} ${EXAMPLESRC}
 

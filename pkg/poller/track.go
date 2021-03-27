@@ -1,4 +1,4 @@
-package listener
+package poller
 
 import (
 	"fmt"

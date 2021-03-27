@@ -1,4 +1,4 @@
-package listener
+package poller
 
 import (
 	"encoding/json"
@@ -13,15 +13,17 @@ import (
 
 type Worker struct {
 	Track
-	runAt time.Time
-	pool  db.Pooler
+	runAt    time.Time
+	pool     db.Pooler
+	handlers map[string]*job.Handler
 }
 
-func NewWorker(id int, namespace string, queues []string, pool db.Pooler) *Worker {
+func NewWorker(id int, namespace string, queues []string, handlers map[string]*job.Handler, pool db.Pooler) *Worker {
 	return &Worker{
-		Track: newTrack(fmt.Sprintf("worker%d", id), namespace, queues),
-		runAt: time.Now(),
-		pool:  pool,
+		Track:    newTrack(fmt.Sprintf("worker%d", id), namespace, queues),
+		runAt:    time.Now(),
+		pool:     pool,
+		handlers: handlers,
 	}
 }
 
@@ -66,13 +68,13 @@ func (w *Worker) Work(jobs <-chan *job.Job, wg *sync.WaitGroup) error {
 }
 
 func (w *Worker) run(conn db.Conn, jb *job.Job) error {
-	handler, ok := handlers[jb.Payload.Class]
+	handler, ok := w.handlers[jb.Payload.Class]
 	if !ok {
 		return fmt.Errorf("Could not find a handler for job class %s", jb.Payload.Class)
 	}
 
 	for _, plugin := range handler.Plugins {
-		if err := plugin.BeforePerform(jb.Queue, jb.Payload.Class, jb.Payload.Args); err != nil {
+		if err := plugin.Before(jb.Queue, jb.Payload.Class, jb.Payload.Args); err != nil {
 			return err
 		}
 	}
@@ -83,7 +85,7 @@ func (w *Worker) run(conn db.Conn, jb *job.Job) error {
 	}
 
 	for _, plugin := range handler.Plugins {
-		if err := plugin.AfterPerform(jb.Queue, jb.Payload.Class, jb.Payload.Args, err); err != nil {
+		if err := plugin.After(jb.Queue, jb.Payload.Class, jb.Payload.Args, err); err != nil {
 			return err
 		}
 	}

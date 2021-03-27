@@ -1,4 +1,4 @@
-package listener_test
+package poller_test
 
 import (
 	"encoding/json"
@@ -10,8 +10,9 @@ import (
 	"github.com/snobb/goresq/pkg/db"
 	"github.com/snobb/goresq/pkg/db/mock"
 	"github.com/snobb/goresq/pkg/job"
-	"github.com/snobb/goresq/pkg/listener"
+	"github.com/snobb/goresq/pkg/poller"
 
+	rr "github.com/snobb/goresq/test/assert"
 	"github.com/snobb/goresq/test/helpers"
 )
 
@@ -42,8 +43,8 @@ func TestWorker_Work(t *testing.T) {
 			},
 			handler: &job.Handler{
 				Perform: func(queue, class string, args []json.RawMessage) error {
-					helpers.AssertEq(t, "queue1", queue)
-					helpers.AssertEq(t, "test", class)
+					rr.AssertEq(t, "queue1", queue)
+					rr.AssertEq(t, "test", class)
 					return nil
 				},
 			},
@@ -79,8 +80,8 @@ func TestWorker_Work(t *testing.T) {
 			},
 			handler: &job.Handler{
 				Perform: func(queue, class string, args []json.RawMessage) error {
-					helpers.AssertEq(t, "queue1", queue)
-					helpers.AssertEq(t, "test", class)
+					rr.AssertEq(t, "queue1", queue)
+					rr.AssertEq(t, "test", class)
 					return fmt.Errorf("spanner")
 				},
 			},
@@ -127,8 +128,6 @@ func TestWorker_Work(t *testing.T) {
 			defer close(jobs)
 
 			var redisCmds []string
-			listener.Register("test", tt.handler)
-
 			mockedConn := &mock.ConnMock{
 				CloseFunc: func() error {
 					redisCmds = append(redisCmds, "Conn::Close")
@@ -163,7 +162,9 @@ func TestWorker_Work(t *testing.T) {
 				},
 			}
 
-			w := listener.NewWorker(1, "resque", []string{"queue1", "queue2"}, mockedPool)
+			handlers := map[string]*job.Handler{"test": tt.handler}
+
+			w := poller.NewWorker(1, "resque", []string{"queue1", "queue2"}, handlers, mockedPool)
 			jobs <- &tt.job
 
 			if err := w.Work(jobs, &wg); (err != nil) != tt.wantErr {
@@ -171,7 +172,7 @@ func TestWorker_Work(t *testing.T) {
 			}
 
 			for i, cmd := range redisCmds {
-				helpers.AssertEq(t, tt.wantCommands[i], cmd)
+				rr.AssertEq(t, tt.wantCommands[i], cmd)
 			}
 		})
 	}

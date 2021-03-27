@@ -2,13 +2,15 @@ package job
 
 import "encoding/json"
 
-type PerformPlugin interface {
-	BeforePerform(queue, class string, args []json.RawMessage) error
-	AfterPerform(queue, class string, args []json.RawMessage, err error) error
+// Plugin defines methods to run before or after operation.
+type Plugin interface {
+	Before(queue, class string, args []json.RawMessage) error
+	After(queue, class string, args []json.RawMessage, err error) error
 }
 
+// Handler represents a message handler.
 type Handler struct {
-	Plugins []PerformPlugin
+	Plugins []Plugin
 	Perform HandlerFunc
 }
 
