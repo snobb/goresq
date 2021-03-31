@@ -16,6 +16,18 @@ import (
 	"github.com/snobb/goresq/test/helpers"
 )
 
+type testHandler struct {
+	perform job.PerformFunc
+}
+
+func (t *testHandler) Plugins() []job.Plugin {
+	return []job.Plugin{}
+}
+
+func (t *testHandler) Perform(queue string, class string, args []json.RawMessage) error {
+	return t.perform(queue, class, args)
+}
+
 func TestWorker_Work(t *testing.T) {
 	hostname, err := os.Hostname()
 	if err != nil {
@@ -26,7 +38,7 @@ func TestWorker_Work(t *testing.T) {
 	tests := []struct {
 		name         string
 		job          job.Job
-		handler      *job.Handler
+		perform      job.PerformFunc
 		wantCommands []string
 		wantRedisOut interface{}
 		wantErr      bool
@@ -41,12 +53,10 @@ func TestWorker_Work(t *testing.T) {
 					Args:  []json.RawMessage{json.RawMessage(helpers.Marshal(map[string]string{"foo": "bar"}))},
 				},
 			},
-			handler: &job.Handler{
-				Perform: func(queue, class string, args []json.RawMessage) error {
-					rr.AssertEq(t, "queue1", queue)
-					rr.AssertEq(t, "test", class)
-					return nil
-				},
+			perform: func(queue, class string, args []json.RawMessage) error {
+				rr.AssertEq(t, "queue1", queue)
+				rr.AssertEq(t, "test", class)
+				return nil
 			},
 			wantCommands: []string{
 				"SADD resque:workers",
@@ -78,12 +88,10 @@ func TestWorker_Work(t *testing.T) {
 					Args:  []json.RawMessage{json.RawMessage(helpers.Marshal(map[string]string{"foo": "bar"}))},
 				},
 			},
-			handler: &job.Handler{
-				Perform: func(queue, class string, args []json.RawMessage) error {
-					rr.AssertEq(t, "queue1", queue)
-					rr.AssertEq(t, "test", class)
-					return fmt.Errorf("spanner")
-				},
+			perform: func(queue, class string, args []json.RawMessage) error {
+				rr.AssertEq(t, "queue1", queue)
+				rr.AssertEq(t, "test", class)
+				return fmt.Errorf("spanner")
 			},
 			wantCommands: []string{
 				"SADD resque:workers",
@@ -162,7 +170,7 @@ func TestWorker_Work(t *testing.T) {
 				},
 			}
 
-			handlers := map[string]*job.Handler{"test": tt.handler}
+			handlers := map[string]job.Handler{"test": &testHandler{tt.perform}}
 
 			w := poller.NewWorker(1, "resque", []string{"queue1", "queue2"}, handlers, mockedPool)
 			jobs <- &tt.job

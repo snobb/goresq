@@ -11,14 +11,16 @@ import (
 	"github.com/snobb/goresq/pkg/job"
 )
 
+// Worker represents a queue worker.
 type Worker struct {
 	Track
 	runAt    time.Time
 	pool     db.Pooler
-	handlers map[string]*job.Handler
+	handlers map[string]job.Handler
 }
 
-func NewWorker(id int, namespace string, queues []string, handlers map[string]*job.Handler, pool db.Pooler) *Worker {
+// NewWorker creates a new worker.
+func NewWorker(id int, namespace string, queues []string, handlers map[string]job.Handler, pool db.Pooler) *Worker {
 	return &Worker{
 		Track:    newTrack(fmt.Sprintf("worker%d", id), namespace, queues),
 		runAt:    time.Now(),
@@ -67,30 +69,31 @@ func (w *Worker) Work(jobs <-chan *job.Job, wg *sync.WaitGroup) error {
 	return nil
 }
 
-func (w *Worker) run(conn db.Conn, jb *job.Job) error {
+func (w *Worker) run(conn db.Conn, jb *job.Job) (err error) {
 	handler, ok := w.handlers[jb.Payload.Class]
 	if !ok {
 		return fmt.Errorf("Could not find a handler for job class %s", jb.Payload.Class)
 	}
 
-	for _, plugin := range handler.Plugins {
-		if err := plugin.Before(jb.Queue, jb.Payload.Class, jb.Payload.Args); err != nil {
-			return err
+	for _, plugin := range handler.Plugins() {
+		if err = plugin.BeforePerform(jb.Queue, jb.Payload.Class, jb.Payload.Args); err != nil {
+			return
 		}
 	}
 
-	err := handler.Perform(jb.Queue, jb.Payload.Class, jb.Payload.Args)
-	if err != nil {
-		return err
-	}
-
-	for _, plugin := range handler.Plugins {
-		if err := plugin.After(jb.Queue, jb.Payload.Class, jb.Payload.Args, err); err != nil {
-			return err
+	defer func() {
+		for _, plugin := range handler.Plugins() {
+			if err = plugin.AfterPerform(jb.Queue, jb.Payload.Class, jb.Payload.Args, err); err != nil {
+				return
+			}
 		}
+	}()
+
+	if err = handler.Perform(jb.Queue, jb.Payload.Class, jb.Payload.Args); err != nil {
+		return
 	}
 
-	return nil
+	return
 }
 
 func (w *Worker) untrack() error {

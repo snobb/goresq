@@ -12,6 +12,7 @@ import (
 	"github.com/snobb/goresq/pkg/signal"
 )
 
+// Poller represents a queue poller
 type Poller struct {
 	Namespace string
 	interval  time.Duration
@@ -19,6 +20,7 @@ type Poller struct {
 	pool      db.Pooler
 }
 
+// New creates a new Poller
 func New(pool db.Pooler, interval time.Duration, concur int) *Poller {
 	return &Poller{
 		Namespace: "resque",
@@ -28,7 +30,8 @@ func New(pool db.Pooler, interval time.Duration, concur int) *Poller {
 	}
 }
 
-func (p *Poller) Start(queues []string, handlers map[string]*job.Handler) error {
+// Start polling the queue.
+func (p *Poller) Start(queues []string, handlers map[string]job.Handler) error {
 	jobs, err := p.poll(queues, signal.Quit())
 	if err != nil {
 		return err
@@ -75,11 +78,10 @@ func (p *Poller) poll(queues []string, quit signal.QuitChannel) (<-chan *job.Job
 
 				jobs <- job
 
-				timeout := time.After(p.interval)
 				select {
 				case <-quit:
 					return
-				case <-timeout:
+				case <-ticker.C:
 				}
 			}
 		}
