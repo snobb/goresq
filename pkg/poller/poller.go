@@ -52,7 +52,7 @@ func (p *Poller) Start(queues []string, handlers map[string]job.Handler) error {
 }
 
 func (p *Poller) poll(queues []string, quit signal.QuitChannel) (<-chan *job.Job, error) {
-	ticker := time.NewTicker(p.interval)
+	tick := time.Tick(p.interval)
 	jobs := make(chan *job.Job)
 
 	go func() {
@@ -61,7 +61,6 @@ func (p *Poller) poll(queues []string, quit signal.QuitChannel) (<-chan *job.Job
 		for {
 			select {
 			case <-quit:
-				ticker.Stop()
 				return
 
 			default:
@@ -81,7 +80,7 @@ func (p *Poller) poll(queues []string, quit signal.QuitChannel) (<-chan *job.Job
 				select {
 				case <-quit:
 					return
-				case <-ticker.C:
+				case <-tick:
 				}
 			}
 		}

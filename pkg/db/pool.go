@@ -8,21 +8,53 @@ import (
 	"time"
 
 	"github.com/gomodule/redigo/redis"
-	"github.com/snobb/goresq/pkg/config"
 )
 
+// Config is a configuration for the redis pool
+type Config struct {
+	URI            string `json:"uri"`
+	DB             int    `json:"db"`
+	MaxIdle        int    `json:"max_idle"`
+	MaxActive      int    `json:"max_active"`
+	IdleTimeout    int    `json:"idle_timeout"`
+	ConnectTimeout int    `json:"connection_timeout"`
+}
+
+// Defaults sets the redis connection defaults.
+func (r *Config) Defaults() {
+	if r.MaxIdle == 0 {
+		r.MaxIdle = 500
+	}
+
+	if r.MaxActive == 0 {
+		r.MaxActive = 500
+	}
+
+	if r.IdleTimeout == 0 {
+		r.IdleTimeout = 5
+	}
+
+	if r.ConnectTimeout == 0 {
+		r.ConnectTimeout = 0
+	}
+}
+
+// Pool represents a redis pool
 type Pool struct {
 	pool *redis.Pool
 }
 
+// Conn represents a redis connection
 type Conn redis.Conn
 
+// Pooler is a redis pool interface
 type Pooler interface {
 	Conn() (Conn, error)
 	Close() error
 }
 
-func NewPool(config *config.Redis) *Pool {
+// NewPool creates new redis pool with the given configuration.
+func NewPool(config *Config) *Pool {
 	config.Defaults()
 
 	dialOptions := []redis.DialOption{
@@ -54,12 +86,15 @@ func NewPool(config *config.Redis) *Pool {
 	}
 }
 
+// Conn returns a new redis connection. Caller must close the connection.
+// Before returning the connection is tested and if it's not alive - an error is returned.
 func (r *Pool) Conn() (Conn, error) {
 	conn := r.pool.Get()
 	_, err := conn.Do("PING")
 	return conn, err
 }
 
+// Close closes the redis pool
 func (r *Pool) Close() error {
 	return r.pool.Close()
 }

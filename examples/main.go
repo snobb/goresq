@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/snobb/goresq/pkg/config"
 	"github.com/snobb/goresq/pkg/db"
 	"github.com/snobb/goresq/pkg/job"
 	"github.com/snobb/goresq/pkg/poller"
@@ -58,13 +57,13 @@ func sumArray(nums ...int) int {
 }
 
 func main() {
-	redis := db.NewPool(&config.Redis{
+	redis := db.NewPool(&db.Config{
 		URI: "localhost:6379",
 		DB:  4,
 	})
 
 	handlers := map[string]job.Handler{
-		"test": &sumHandler{
+		"sum": &sumHandler{
 			plugins: []job.Plugin{&delayPlugin{}},
 		},
 	}

@@ -12,7 +12,7 @@ import (
 	"github.com/snobb/goresq/pkg/job"
 	"github.com/snobb/goresq/pkg/poller"
 
-	rr "github.com/snobb/goresq/test/assert"
+	"github.com/snobb/goresq/test/assert"
 	"github.com/snobb/goresq/test/helpers"
 )
 
@@ -54,8 +54,8 @@ func TestWorker_Work(t *testing.T) {
 				},
 			},
 			perform: func(queue, class string, args []json.RawMessage) error {
-				rr.AssertEq(t, "queue1", queue)
-				rr.AssertEq(t, "test", class)
+				assert.Eq(t, "queue1", queue)
+				assert.Eq(t, "test", class)
 				return nil
 			},
 			wantCommands: []string{
@@ -89,8 +89,8 @@ func TestWorker_Work(t *testing.T) {
 				},
 			},
 			perform: func(queue, class string, args []json.RawMessage) error {
-				rr.AssertEq(t, "queue1", queue)
-				rr.AssertEq(t, "test", class)
+				assert.Eq(t, "queue1", queue)
+				assert.Eq(t, "test", class)
 				return fmt.Errorf("spanner")
 			},
 			wantCommands: []string{
@@ -180,7 +180,7 @@ func TestWorker_Work(t *testing.T) {
 			}
 
 			for i, cmd := range redisCmds {
-				rr.AssertEq(t, tt.wantCommands[i], cmd)
+				assert.Eq(t, tt.wantCommands[i], cmd)
 			}
 		})
 	}
