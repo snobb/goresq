@@ -30,9 +30,9 @@ func New(pool db.Pooler, interval time.Duration, concur int) *Poller {
 	}
 }
 
-// Start polling the queue.
-func (p *Poller) Start(queues []string, handlers map[string]job.Handler) error {
-	jobs, err := p.poll(queues, signal.Quit())
+// StartQuit polling the queue and quit on signal from the quit channel.
+func (p *Poller) StartQuit(queues []string, handlers map[string]job.Handler, quit signal.QuitChannel) error {
+	jobs, err := p.poll(queues, quit)
 	if err != nil {
 		return err
 	}
@@ -49,6 +49,11 @@ func (p *Poller) Start(queues []string, handlers map[string]job.Handler) error {
 	wg.Wait()
 
 	return nil
+}
+
+// Start polling the queue and quit on OS signals.
+func (p *Poller) Start(queues []string, handlers map[string]job.Handler) error {
+	return p.StartQuit(queues, handlers, signal.Quit())
 }
 
 func (p *Poller) poll(queues []string, quit signal.QuitChannel) (<-chan *job.Job, error) {

@@ -6,8 +6,10 @@ import (
 	"syscall"
 )
 
+// QuitChannel is channel to send quit signal
 type QuitChannel <-chan struct{}
 
+// Quit is a helper function to create quit channel from OS signalst
 func Quit() QuitChannel {
 	sigs := make(chan os.Signal)
 	done := make(chan struct{})
