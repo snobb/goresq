@@ -1,6 +1,11 @@
 package job
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
+
+// Result is a result from the job hansler.
+type Result interface{}
 
 // Plugin defines a plugin interface
 type Plugin interface {
@@ -8,7 +13,7 @@ type Plugin interface {
 	BeforePerform(queue, class string, args []json.RawMessage) error
 
 	// AfterPerform is a function to run after handling a job
-	AfterPerform(queue, class string, args []json.RawMessage, err error) error
+	AfterPerform(queue, class string, args []json.RawMessage, result Result, err error) error
 }
 
 // Handler represents a job Handler.
@@ -17,8 +22,8 @@ type Handler interface {
 	Plugins() []Plugin
 
 	// Perform is a function that handles the job
-	Perform(queue, class string, args []json.RawMessage) error
+	Perform(queue, class string, args []json.RawMessage) (Result, error)
 }
 
 // PerformFunc represents a function that performs the job
-type PerformFunc func(queue, class string, args []json.RawMessage) error
+type PerformFunc func(queue, class string, args []json.RawMessage) (Result, error)

@@ -9,6 +9,7 @@ import (
 	"github.com/snobb/goresq/pkg/db"
 )
 
+// Track represents a redis connection tracker.
 type Track struct {
 	Hostname  string
 	Pid       int

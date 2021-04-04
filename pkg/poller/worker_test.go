@@ -24,7 +24,7 @@ func (t *testHandler) Plugins() []job.Plugin {
 	return []job.Plugin{}
 }
 
-func (t *testHandler) Perform(queue string, class string, args []json.RawMessage) error {
+func (t *testHandler) Perform(queue string, class string, args []json.RawMessage) (job.Result, error) {
 	return t.perform(queue, class, args)
 }
 
@@ -53,10 +53,10 @@ func TestWorker_Work(t *testing.T) {
 					Args:  []json.RawMessage{json.RawMessage(helpers.Marshal(map[string]string{"foo": "bar"}))},
 				},
 			},
-			perform: func(queue, class string, args []json.RawMessage) error {
+			perform: func(queue, class string, args []json.RawMessage) (job.Result, error) {
 				assert.Eq(t, "queue1", queue)
 				assert.Eq(t, "test", class)
-				return nil
+				return "foobar", nil
 			},
 			wantCommands: []string{
 				"SADD resque:workers",
@@ -88,10 +88,10 @@ func TestWorker_Work(t *testing.T) {
 					Args:  []json.RawMessage{json.RawMessage(helpers.Marshal(map[string]string{"foo": "bar"}))},
 				},
 			},
-			perform: func(queue, class string, args []json.RawMessage) error {
+			perform: func(queue, class string, args []json.RawMessage) (job.Result, error) {
 				assert.Eq(t, "queue1", queue)
 				assert.Eq(t, "test", class)
-				return fmt.Errorf("spanner")
+				return nil, fmt.Errorf("spanner")
 			},
 			wantCommands: []string{
 				"SADD resque:workers",

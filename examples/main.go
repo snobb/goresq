@@ -18,18 +18,19 @@ func (s *sumHandler) Plugins() []job.Plugin {
 	return s.plugins
 }
 
-func (s *sumHandler) Perform(queue string, class string, args []json.RawMessage) error {
+func (s *sumHandler) Perform(queue string, class string, args []json.RawMessage) (job.Result, error) {
 	var params struct {
 		TaskData []int `json:"task_data"`
 	}
 
 	if err := json.Unmarshal(args[0], &params); err != nil {
-		return err
+		return nil, err
 	}
 
 	fmt.Printf("%s : %s : %#v\n", queue, class, params.TaskData)
-	fmt.Printf("sum: %d\n", sumArray(params.TaskData...))
-	return nil
+	sum := sumArray(params.TaskData...)
+	fmt.Printf("sum: %d\n", sum)
+	return sum, nil
 }
 
 type delayPlugin struct{}
@@ -40,8 +41,8 @@ func (d *delayPlugin) BeforePerform(queue string, class string, args []json.RawM
 }
 
 // AfterPerform is a function to run after handling a job
-func (d *delayPlugin) AfterPerform(queue string, class string, args []json.RawMessage, err error) error {
-	fmt.Println("Delaying...")
+func (d *delayPlugin) AfterPerform(queue string, class string, args []json.RawMessage, result job.Result, err error) error {
+	fmt.Printf("result = %v  Delaying...\n", result)
 	time.Sleep(10 * time.Second)
 	return nil
 }

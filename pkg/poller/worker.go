@@ -70,6 +70,7 @@ func (w *Worker) Work(jobs <-chan *job.Job, wg *sync.WaitGroup) error {
 }
 
 func (w *Worker) run(conn db.Conn, jb *job.Job) (err error) {
+	var result job.Result
 	handler, ok := w.handlers[jb.Payload.Class]
 	if !ok {
 		return fmt.Errorf("Could not find a handler for job class %s", jb.Payload.Class)
@@ -83,13 +84,14 @@ func (w *Worker) run(conn db.Conn, jb *job.Job) (err error) {
 
 	defer func() {
 		for _, plugin := range handler.Plugins() {
-			if err = plugin.AfterPerform(jb.Queue, jb.Payload.Class, jb.Payload.Args, err); err != nil {
+			if err = plugin.AfterPerform(jb.Queue, jb.Payload.Class, jb.Payload.Args, result, err); err != nil {
 				return
 			}
 		}
 	}()
 
-	if err = handler.Perform(jb.Queue, jb.Payload.Class, jb.Payload.Args); err != nil {
+	result, err = handler.Perform(jb.Queue, jb.Payload.Class, jb.Payload.Args)
+	if err != nil {
 		return
 	}
 
