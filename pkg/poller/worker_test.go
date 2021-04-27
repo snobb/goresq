@@ -1,11 +1,13 @@
 package poller_test
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/snobb/goresq/pkg/db"
 	"github.com/snobb/goresq/pkg/db/mock"
@@ -175,9 +177,13 @@ func TestWorker_Work(t *testing.T) {
 			w := poller.NewWorker(1, "resque", []string{"queue1", "queue2"}, handlers, mockedPool)
 			jobs <- &tt.job
 
-			if err := w.Work(jobs, &wg); (err != nil) != tt.wantErr {
-				t.Errorf("Worker.Work() error = %v, wantErr %v", err, tt.wantErr)
-			}
+			ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+			defer cancel()
+			go func() {
+				if err := w.Work(ctx, jobs, &wg); (err != nil) != tt.wantErr {
+					t.Errorf("Worker.Work() error = %v, wantErr %v", err, tt.wantErr)
+				}
+			}()
 
 			for i, cmd := range redisCmds {
 				assert.Eq(t, tt.wantCommands[i], cmd)

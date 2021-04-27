@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -70,7 +71,7 @@ func main() {
 	}
 
 	p := poller.New(redis, time.Second*2, 1)
-	if err := p.Start([]string{"queue1.test", "queue2.test"}, handlers); err != nil {
+	if err := p.Start(context.Background(), []string{"queue1.test", "queue2.test"}, handlers); err != nil {
 		panic(err)
 	}
 }

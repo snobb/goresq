@@ -2,6 +2,7 @@ package poller
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"sync"
@@ -9,7 +10,6 @@ import (
 
 	"github.com/snobb/goresq/pkg/db"
 	"github.com/snobb/goresq/pkg/job"
-	"github.com/snobb/goresq/pkg/signal"
 )
 
 // Poller represents a queue poller
@@ -30,9 +30,10 @@ func New(pool db.Pooler, interval time.Duration, concur int) *Poller {
 	}
 }
 
-// StartQuit polling the queue and quit on signal from the quit channel.
-func (p *Poller) StartQuit(queues []string, handlers map[string]job.Handler, quit signal.QuitChannel) error {
-	jobs, err := p.poll(queues, quit)
+// Start polling the queue. The poller is aware of context cancel and timeout and will quite on
+// these events.
+func (p *Poller) Start(ctx context.Context, queues []string, handlers map[string]job.Handler) error {
+	jobs, err := p.poll(ctx, queues)
 	if err != nil {
 		return err
 	}
@@ -41,7 +42,7 @@ func (p *Poller) StartQuit(queues []string, handlers map[string]job.Handler, qui
 
 	for i := 0; i < p.concur; i++ {
 		w := NewWorker(i, p.Namespace, queues, handlers, p.pool)
-		if err := w.Work(jobs, &wg); err != nil {
+		if err := w.Work(ctx, jobs, &wg); err != nil {
 			return err
 		}
 	}
@@ -51,12 +52,7 @@ func (p *Poller) StartQuit(queues []string, handlers map[string]job.Handler, qui
 	return nil
 }
 
-// Start polling the queue and quit on OS signals.
-func (p *Poller) Start(queues []string, handlers map[string]job.Handler) error {
-	return p.StartQuit(queues, handlers, signal.Quit())
-}
-
-func (p *Poller) poll(queues []string, quit signal.QuitChannel) (<-chan *job.Job, error) {
+func (p *Poller) poll(ctx context.Context, queues []string) (<-chan *job.Job, error) {
 	tick := time.Tick(p.interval)
 	jobs := make(chan *job.Job)
 
@@ -65,7 +61,7 @@ func (p *Poller) poll(queues []string, quit signal.QuitChannel) (<-chan *job.Job
 
 		for {
 			select {
-			case <-quit:
+			case <-ctx.Done():
 				return
 
 			default:
@@ -83,7 +79,7 @@ func (p *Poller) poll(queues []string, quit signal.QuitChannel) (<-chan *job.Job
 				jobs <- job
 
 				select {
-				case <-quit:
+				case <-ctx.Done():
 					return
 				case <-tick:
 				}

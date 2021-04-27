@@ -1,9 +1,9 @@
 package poller
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"sync"
 	"time"
 
@@ -30,14 +30,12 @@ func NewWorker(id int, namespace string, queues []string, handlers map[string]jo
 }
 
 // Work is a method that starts job worker and processes jobs.
-func (w *Worker) Work(jobs <-chan *job.Job, wg *sync.WaitGroup) error {
+func (w *Worker) Work(ctx context.Context, jobs <-chan *job.Job, wg *sync.WaitGroup) error {
 	wg.Add(1)
 	defer func() {
 		wg.Done()
 		w.untrack()
 	}()
-
-	runOnce := (os.Getenv("GORESQ_RUN_ONCE") != "")
 
 	if err := w.track(); err != nil {
 		return err
@@ -48,21 +46,23 @@ func (w *Worker) Work(jobs <-chan *job.Job, wg *sync.WaitGroup) error {
 			continue
 		}
 
-		conn, err := w.pool.Conn()
-		if err != nil {
-			return err
-		}
-		defer conn.Close()
+		select {
+		case <-ctx.Done():
+			return nil
 
-		err = w.run(conn, jb)
-		if err != nil {
-			w.fail(conn, jb, err)
-		} else {
-			w.success(conn, jb)
-		}
+		default:
+			conn, err := w.pool.Conn()
+			if err != nil {
+				return err
+			}
+			defer conn.Close()
 
-		if runOnce {
-			break
+			err = w.run(conn, jb)
+			if err != nil {
+				w.fail(conn, jb, err)
+			} else {
+				w.success(conn, jb)
+			}
 		}
 	}
 
