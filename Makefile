@@ -9,17 +9,21 @@ vet:
 fmt:
 	gofmt -l -w .
 
-test:
+test: generate
 	go test -cover ./...
 
-run:
+run: generate
 	go run ./examples/...
 
-examples: vet fmt
+generate:
+	go generate ./pkg/...
+
+examples: generate vet fmt
 	go build -o ./bin/${TARGET} ${EXAMPLESRC}
 
 clean:
 	go clean ./...
+	-rm -rf pkg/*/mock
 	-rm -rf bin
 
 .PHONY: build clean vet test

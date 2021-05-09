@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/mock/gomock"
 	"github.com/snobb/goresq/pkg/db"
 	"github.com/snobb/goresq/pkg/db/mock"
 	"github.com/snobb/goresq/pkg/job"
@@ -131,6 +132,12 @@ func TestWorker_Work(t *testing.T) {
 		},
 	}
 
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockPool := mock.NewMockPooler(ctrl)
+	mockConn := mock.NewMockConn(ctrl)
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var wg sync.WaitGroup
@@ -138,43 +145,56 @@ func TestWorker_Work(t *testing.T) {
 			defer close(jobs)
 
 			var redisCmds []string
-			mockedConn := &mock.ConnMock{
-				CloseFunc: func() error {
-					redisCmds = append(redisCmds, "Conn::Close")
-					return nil
-				},
-				DoFunc: func(commandName string, args ...interface{}) (interface{}, error) {
-					redisCmds = append(redisCmds, fmt.Sprintf("%s %s", commandName, args[0]))
-					return tt.wantRedisOut, nil
-				},
-				ErrFunc: func() error {
-					panic("mock out the Err method")
-				},
-				FlushFunc: func() error {
-					redisCmds = append(redisCmds, "Conn::Flush")
-					return nil
-				},
-				ReceiveFunc: func() (interface{}, error) {
-					panic("mock out the Receive method")
-				},
-				SendFunc: func(commandName string, args ...interface{}) error {
-					redisCmds = append(redisCmds, fmt.Sprintf("%s %s", commandName, args[0]))
-					return nil
-				},
-			}
+			mockConn.EXPECT().
+				Close().
+				DoAndReturn(
+					func() error {
+						redisCmds = append(redisCmds, "Conn::Close")
+						return nil
+					}).
+				AnyTimes()
 
-			mockedPool := &mock.PoolerMock{
-				ConnFunc: func() (db.Conn, error) {
-					if tt.wantDbErr {
-						return nil, fmt.Errorf("db spanner")
-					}
-					return mockedConn, nil
-				},
-			}
+			mockConn.EXPECT().
+				Do(gomock.Any(), gomock.Any()).
+				DoAndReturn(
+					func(commandName string, args ...interface{}) (interface{}, error) {
+						redisCmds = append(redisCmds, fmt.Sprintf("%s %s", commandName, args[0]))
+						return tt.wantRedisOut, nil
+					}).
+				AnyTimes()
+
+			mockConn.EXPECT().
+				Flush().
+				DoAndReturn(
+					func() error {
+						redisCmds = append(redisCmds, "Conn::Flush")
+						return nil
+					}).
+				AnyTimes()
+
+			mockConn.EXPECT().
+				Send(gomock.Any(), gomock.Any()).
+				DoAndReturn(
+					func(commandName string, args ...interface{}) error {
+						redisCmds = append(redisCmds, fmt.Sprintf("%s %s", commandName, args[0]))
+						return nil
+					}).
+				AnyTimes()
+
+			mockPool.EXPECT().
+				Conn().
+				DoAndReturn(
+					func() (db.Conn, error) {
+						if tt.wantDbErr {
+							return nil, fmt.Errorf("db spanner")
+						}
+						return mockConn, nil
+					}).
+				AnyTimes()
 
 			handlers := map[string]job.Handler{"test": &testHandler{tt.perform}}
 
-			w := poller.NewWorker(1, "resque", []string{"queue1", "queue2"}, handlers, mockedPool)
+			w := poller.NewWorker(1, "resque", []string{"queue1", "queue2"}, handlers, mockPool)
 			jobs <- &tt.job
 
 			ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)

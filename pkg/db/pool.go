@@ -1,6 +1,6 @@
 package db
 
-//go:generate moq -pkg mock -out mock/pooler.go . Pooler Conn
+//go:generate mockgen -destination mock/pooler.go -package mock . Pooler,Conn
 
 import (
 	"fmt"
