@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/snobb/goresq/pkg/db"
@@ -71,7 +72,14 @@ func main() {
 	}
 
 	p := poller.New(redis, time.Second*2, 1)
-	if err := p.Start(context.Background(), []string{"queue1.test", "queue2.test"}, handlers); err != nil {
+	errs := make(chan error)
+	go func() {
+		for err := range errs {
+			log.Printf("error: %s", err.Error())
+		}
+	}()
+
+	if err := p.Start(context.Background(), []string{"queue1.test", "queue2.test"}, handlers, errs); err != nil {
 		panic(err)
 	}
 }

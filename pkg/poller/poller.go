@@ -32,8 +32,8 @@ func New(pool db.Pooler, interval time.Duration, concur int) *Poller {
 
 // Start polling the queue. The poller is aware of context cancel and timeout and will quite on
 // these events.
-func (p *Poller) Start(ctx context.Context, queues []string, handlers map[string]job.Handler) error {
-	jobs, err := p.poll(ctx, queues)
+func (p *Poller) Start(ctx context.Context, queues []string, handlers map[string]job.Handler, errors chan<- error) error {
+	jobs, err := p.poll(ctx, queues, errors)
 	if err != nil {
 		return err
 	}
@@ -42,9 +42,7 @@ func (p *Poller) Start(ctx context.Context, queues []string, handlers map[string
 
 	for i := 0; i < p.concur; i++ {
 		w := NewWorker(i, p.Namespace, queues, handlers, p.pool)
-		if err := w.Work(ctx, jobs, &wg); err != nil {
-			return err
-		}
+		w.Work(ctx, jobs, &wg, errors)
 	}
 
 	wg.Wait()
@@ -52,7 +50,7 @@ func (p *Poller) Start(ctx context.Context, queues []string, handlers map[string
 	return nil
 }
 
-func (p *Poller) poll(ctx context.Context, queues []string) (<-chan *job.Job, error) {
+func (p *Poller) poll(ctx context.Context, queues []string, errors chan<- error) (<-chan *job.Job, error) {
 	tick := time.Tick(p.interval)
 	jobs := make(chan *job.Job)
 
@@ -67,6 +65,7 @@ func (p *Poller) poll(ctx context.Context, queues []string) (<-chan *job.Job, er
 			default:
 				conn, err := p.pool.Conn()
 				if err != nil {
+					errors <- err
 					return
 				}
 				defer conn.Close()

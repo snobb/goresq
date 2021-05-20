@@ -30,41 +30,45 @@ func NewWorker(id int, namespace string, queues []string, handlers map[string]jo
 }
 
 // Work is a method that starts job worker and processes jobs.
-func (w *Worker) Work(ctx context.Context, jobs <-chan *job.Job, wg *sync.WaitGroup) error {
-	wg.Add(1)
-	defer func() {
-		wg.Done()
-		w.untrack()
-	}()
-
+func (w *Worker) Work(ctx context.Context, jobs <-chan *job.Job, wg *sync.WaitGroup, errors chan<- error) error {
 	if err := w.track(); err != nil {
+		errors <- err
 		return err
 	}
 
-	for jb := range jobs {
-		if jb == nil {
-			continue
-		}
+	wg.Add(1)
 
-		select {
-		case <-ctx.Done():
-			return nil
+	go func() {
+		defer func() {
+			wg.Done()
+			w.untrack()
+		}()
 
-		default:
-			conn, err := w.pool.Conn()
-			if err != nil {
-				return err
+		for jb := range jobs {
+			if jb == nil {
+				continue
 			}
-			defer conn.Close()
 
-			err = w.run(conn, jb)
-			if err != nil {
-				w.fail(conn, jb, err)
-			} else {
-				w.success(conn, jb)
+			select {
+			case <-ctx.Done():
+				return
+
+			default:
+				conn, err := w.pool.Conn()
+				if err != nil {
+					errors <- err
+				}
+				defer conn.Close()
+
+				err = w.run(conn, jb)
+				if err != nil {
+					w.fail(conn, jb, err)
+				} else {
+					w.success(conn, jb)
+				}
 			}
 		}
-	}
+	}()
 
 	return nil
 }
