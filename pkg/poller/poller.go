@@ -62,31 +62,32 @@ func (p *Poller) poll(ctx context.Context, queues []string, errors chan<- error)
 			case <-ctx.Done():
 				return
 
-			default:
-				conn, err := p.pool.Conn()
-				if err != nil {
+			case <-tick:
+				if err := p.poolTick(queues, jobs); err != nil {
 					errors <- err
-					return
-				}
-				defer conn.Close()
-
-				job, err := p.getJob(conn, queues)
-				if err != nil {
-					return
-				}
-
-				jobs <- job
-
-				select {
-				case <-ctx.Done():
-					return
-				case <-tick:
 				}
 			}
 		}
 	}()
 
 	return jobs, nil
+}
+
+func (p *Poller) poolTick(queues []string, jobs chan<- *job.Job) error {
+	conn, err := p.pool.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	job, err := p.getJob(conn, queues)
+	if err != nil {
+		return err
+	}
+
+	jobs <- job
+
+	return nil
 }
 
 func (p *Poller) getJob(conn db.Conn, queues []string) (*job.Job, error) {

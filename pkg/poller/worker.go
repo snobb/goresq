@@ -52,25 +52,32 @@ func (w *Worker) Work(ctx context.Context, jobs <-chan *job.Job, wg *sync.WaitGr
 			select {
 			case <-ctx.Done():
 				return
-
 			default:
-				conn, err := w.pool.Conn()
-				if err != nil {
+				if err := w.handleJob(jb); err != nil {
 					errors <- err
-				}
-				defer conn.Close()
-
-				err = w.run(conn, jb)
-				if err != nil {
-					w.fail(conn, jb, err)
-				} else {
-					w.success(conn, jb)
 				}
 			}
 		}
 	}()
 
 	return nil
+}
+
+func (w *Worker) handleJob(jb *job.Job) error {
+	conn, err := w.pool.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	err = w.run(conn, jb)
+	if err != nil {
+		w.fail(conn, jb, err)
+	} else {
+		w.success(conn, jb)
+	}
+
+	return err
 }
 
 func (w *Worker) run(conn db.Conn, jb *job.Job) (err error) {
