@@ -19,6 +19,8 @@ type Worker struct {
 	handlers map[string]job.Handler
 }
 
+const connCoolDown = 1 * time.Second
+
 // NewWorker creates a new worker.
 func NewWorker(id int, namespace string, queues []string, handlers map[string]job.Handler, pool db.Pooler) *Worker {
 	return &Worker{
@@ -45,14 +47,14 @@ func (w *Worker) Work(ctx context.Context, jobs <-chan *job.Job, wg *sync.WaitGr
 		}()
 
 		for jb := range jobs {
-			if jb == nil {
-				continue
-			}
-
 			select {
 			case <-ctx.Done():
 				return
 			default:
+				if jb == nil {
+					continue
+				}
+
 				if err := w.handleJob(jb); err != nil {
 					errors <- err
 				}
@@ -112,6 +114,7 @@ func (w *Worker) run(conn db.Conn, jb *job.Job) (err error) {
 func (w *Worker) untrack() error {
 	conn, err := w.pool.Conn()
 	if err != nil {
+		time.Sleep(connCoolDown)
 		return err
 	}
 	defer conn.Close()
@@ -122,6 +125,7 @@ func (w *Worker) untrack() error {
 func (w *Worker) track() error {
 	conn, err := w.pool.Conn()
 	if err != nil {
+		time.Sleep(connCoolDown)
 		return err
 	}
 	defer conn.Close()

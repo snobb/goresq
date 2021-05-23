@@ -42,7 +42,9 @@ func (p *Poller) Start(ctx context.Context, queues []string, handlers map[string
 
 	for i := 0; i < p.concur; i++ {
 		w := NewWorker(i, p.Namespace, queues, handlers, p.pool)
-		w.Work(ctx, jobs, &wg, errors)
+		if err := w.Work(ctx, jobs, &wg, errors); err != nil {
+			i--
+		}
 	}
 
 	wg.Wait()
