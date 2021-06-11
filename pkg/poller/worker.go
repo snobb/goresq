@@ -104,10 +104,6 @@ func (w *Worker) run(conn db.Conn, jb *job.Job) (err error) {
 	}()
 
 	result, err = handler.Perform(jb.Queue, jb.Payload.Class, jb.Payload.Args)
-	if err != nil {
-		return
-	}
-
 	return
 }
 
