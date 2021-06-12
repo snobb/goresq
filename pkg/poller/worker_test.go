@@ -18,18 +18,6 @@ import (
 	"github.com/snobb/goresq/test/helpers"
 )
 
-type testHandler struct {
-	perform job.PerformFunc
-}
-
-func (t *testHandler) Plugins() []job.Plugin {
-	return []job.Plugin{}
-}
-
-func (t *testHandler) Perform(queue string, class string, args []json.RawMessage) (job.Result, error) {
-	return t.perform(queue, class, args)
-}
-
 func TestWorker_Work(t *testing.T) {
 	hostname, err := os.Hostname()
 	if err != nil {
@@ -172,7 +160,7 @@ func TestWorker_Work(t *testing.T) {
 				},
 			}
 
-			handlers := map[string]job.Handler{"test": &testHandler{tt.perform}}
+			handlers := map[string]job.Handler{"test": tt.perform}
 
 			w := poller.NewWorker(1, "resque", []string{"queue1", "queue2"}, handlers, mockedPool)
 			jobs <- &tt.job

@@ -27,3 +27,13 @@ type Handler interface {
 
 // PerformFunc represents a function that performs the job
 type PerformFunc func(queue, class string, args []json.RawMessage) (Result, error)
+
+// Plugins returns a list of registered plugins with the handler.
+func (p PerformFunc) Plugins() []Plugin {
+	return []Plugin{}
+}
+
+// Perform is a function that handles the job
+func (p PerformFunc) Perform(queue string, class string, args []json.RawMessage) (Result, error) {
+	return p(queue, class, args)
+}
