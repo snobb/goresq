@@ -10,6 +10,7 @@ import (
 	"github.com/snobb/goresq/pkg/db"
 	"github.com/snobb/goresq/pkg/job"
 	"github.com/snobb/goresq/pkg/poller"
+	"github.com/snobb/goresq/pkg/queue"
 )
 
 type sumHandler struct {
@@ -71,12 +72,22 @@ func main() {
 		},
 	}
 
-	p := poller.New(redis, time.Second*2, 1)
+	p := poller.New(redis, time.Millisecond*100, 3)
 	errs := make(chan error)
 	go func() {
 		for err := range errs {
 			log.Printf("error: %s", err.Error())
 		}
+	}()
+
+	go func() {
+		q := queue.New(redis)
+		payload := map[string]interface{}{
+			"class":     "sum",
+			"task_data": []int{10, 20, 30},
+		}
+
+		q.Enqueue(context.Background(), "sum", "queue2.test", []interface{}{payload})
 	}()
 
 	if err := p.Start(context.Background(), []string{"queue1.test", "queue2.test"}, handlers, errs); err != nil {
