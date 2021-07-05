@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/snobb/goresq/pkg/db"
@@ -90,7 +93,16 @@ func main() {
 		q.Enqueue(context.Background(), "sum", "queue2.test", []interface{}{payload})
 	}()
 
-	if err := p.Start(context.Background(), []string{"queue1.test", "queue2.test"}, handlers, errs); err != nil {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	go func() {
+		sigs := make(chan os.Signal, 1)
+		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, os.Interrupt)
+		<-sigs
+		cancel()
+	}()
+
+	if err := p.Start(ctx, []string{"queue1.test", "queue2.test"}, handlers, errs); err != nil {
 		panic(err)
 	}
 }

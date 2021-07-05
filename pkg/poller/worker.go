@@ -42,8 +42,8 @@ func (w *Worker) Work(ctx context.Context, jobs <-chan *job.Job, wg *sync.WaitGr
 
 	go func() {
 		defer func() {
-			wg.Done()
 			w.untrack()
+			wg.Done()
 		}()
 
 		for jb := range jobs {
