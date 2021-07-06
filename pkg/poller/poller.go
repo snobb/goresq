@@ -33,12 +33,12 @@ func New(pool db.Pooler, interval time.Duration, concur int) *Poller {
 // Start polling the queue. The poller is aware of context cancel and timeout and will quite on
 // these events.
 func (p *Poller) Start(ctx context.Context, queues []string, handlers map[string]job.Handler, errors chan<- error) error {
-	jobs, err := p.poll(ctx, queues, errors)
+	var wg sync.WaitGroup
+
+	jobs, err := p.poll(ctx, queues, &wg, errors)
 	if err != nil {
 		return err
 	}
-
-	var wg sync.WaitGroup
 
 	for i := 0; i < p.concur; i++ {
 		w := NewWorker(i, p.Namespace, queues, handlers, p.pool)
@@ -52,12 +52,17 @@ func (p *Poller) Start(ctx context.Context, queues []string, handlers map[string
 	return nil
 }
 
-func (p *Poller) poll(ctx context.Context, queues []string, errors chan<- error) (<-chan *job.Job, error) {
+func (p *Poller) poll(ctx context.Context, queues []string, wg *sync.WaitGroup, errors chan<- error) (<-chan *job.Job, error) {
 	tick := time.Tick(p.interval)
 	jobs := make(chan *job.Job)
 
+	wg.Add(1)
+
 	go func() {
-		defer close(jobs)
+		defer func() {
+			close(jobs)
+			wg.Done()
+		}()
 
 		for {
 			select {

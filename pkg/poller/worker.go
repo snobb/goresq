@@ -47,17 +47,12 @@ func (w *Worker) Work(ctx context.Context, jobs <-chan *job.Job, wg *sync.WaitGr
 		}()
 
 		for jb := range jobs {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				if jb == nil {
-					continue
-				}
+			if jb == nil {
+				continue
+			}
 
-				if err := w.handleJob(jb); err != nil {
-					errors <- err
-				}
+			if err := w.handleJob(jb); err != nil {
+				errors <- err
 			}
 		}
 	}()
