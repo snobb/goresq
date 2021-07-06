@@ -42,6 +42,7 @@ func (t *Track) track(conn db.Conn) error {
 	conn.Send("SET", fmt.Sprintf("%s:stat:processed:%v", t.Namespace, t), "0")
 	conn.Send("SET", fmt.Sprintf("%s:stat:failed:%v", t.Namespace, t), "0")
 	conn.Send("SET", fmt.Sprintf("%s:worker:%s:started", t.Namespace, t), int64(time.Now().Unix()))
+	conn.Flush()
 
 	return nil
 }

@@ -33,10 +33,7 @@ func (q *Queue) Enqueue(ctx context.Context, class, queue string, data []interfa
 	payload := struct {
 		Class string        `json:"class"`
 		Args  []interface{} `json:"args"`
-	}{
-		Class: class,
-		Args:  data,
-	}
+	}{class, data}
 
 	buf, err := json.Marshal(payload)
 	if err != nil {

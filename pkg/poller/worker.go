@@ -137,12 +137,12 @@ func (w *Worker) fail(conn db.Conn, job *job.Job, err error) error {
 		Worker    string
 		Queue     string
 	}{
-		time.Now(),
-		job.Payload.Args[0],
-		"Error",
-		err.Error(),
-		w.String(),
-		job.Queue,
+		FailedAt:  time.Now(),
+		Payload:   job.Payload.Args[0],
+		Exception: "Error",
+		Error:     err.Error(),
+		Worker:    w.String(),
+		Queue:     job.Queue,
 	}
 
 	buf, err := json.Marshal(resqueError)
