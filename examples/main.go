@@ -63,6 +63,20 @@ func sumArray(nums ...int) int {
 	return result
 }
 
+type queueLogger struct{}
+
+// BeforeEnqueue is a function to run before handling a job.
+func (q *queueLogger) BeforeEnqueue(queue string, class string, args []interface{}) error {
+	log.Printf(":: enqueueing message: queue:%s, class:%s, args:%#v", queue, class, args)
+	return nil
+}
+
+// AfterEnqueue is a function to run after handling a job
+func (q *queueLogger) AfterEnqueue(queue string, class string, args []interface{}) error {
+	log.Printf(":: enqueued message: queue:%s, class:%s, args:%#v", queue, class, args)
+	return nil
+}
+
 func main() {
 	redis := db.NewPool(&db.Config{
 		URI: "localhost:6379",
@@ -85,12 +99,15 @@ func main() {
 
 	go func() {
 		q := queue.New(redis)
+		q.RegisterPlugins(&queueLogger{})
+
 		payload := map[string]interface{}{
 			"class":     "sum",
 			"task_data": []int{10, 20, 30},
 		}
 
-		q.Enqueue(context.Background(), "sum", "queue2.test", []interface{}{payload})
+		q.Enqueue(context.Background(), "queue2.test", "sum", []interface{}{payload})
+		q.Enqueue(context.Background(), "queue1.test", "sum", []interface{}{payload})
 	}()
 
 	ctx, cancel := context.WithCancel(context.Background())
