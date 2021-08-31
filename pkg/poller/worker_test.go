@@ -121,7 +121,6 @@ func TestWorker_Work(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var wg sync.WaitGroup
 			jobs := make(chan *job.Job, 1)
 			defer close(jobs)
 
@@ -165,6 +164,7 @@ func TestWorker_Work(t *testing.T) {
 			w := poller.NewWorker(1, "resque", []string{"queue1", "queue2"}, handlers, mockedPool)
 			jobs <- &tt.job
 
+			var wg sync.WaitGroup
 			ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 			defer cancel()
 			go func() {
@@ -172,6 +172,7 @@ func TestWorker_Work(t *testing.T) {
 					t.Errorf("Worker.Work() error = %v, wantErr %v", err, tt.wantErr)
 				}
 			}()
+			wg.Wait()
 
 			for i, cmd := range redisCmds {
 				assert.Eq(t, tt.wantCommands[i], cmd)

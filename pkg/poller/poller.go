@@ -35,10 +35,7 @@ func New(pool db.Pooler, interval time.Duration, concur int) *Poller {
 func (p *Poller) Start(ctx context.Context, queues []string, handlers map[string]job.Handler, errors chan<- error) error {
 	var wg sync.WaitGroup
 
-	jobs, err := p.poll(ctx, queues, &wg, errors)
-	if err != nil {
-		return err
-	}
+	jobs := p.poll(ctx, queues, &wg, errors)
 
 	for i := 0; i < p.concur; i++ {
 		w := NewWorker(i, p.Namespace, queues, handlers, p.pool)
@@ -58,7 +55,7 @@ func (p *Poller) Start(ctx context.Context, queues []string, handlers map[string
 	return nil
 }
 
-func (p *Poller) poll(ctx context.Context, queues []string, wg *sync.WaitGroup, errors chan<- error) (<-chan *job.Job, error) {
+func (p *Poller) poll(ctx context.Context, queues []string, wg *sync.WaitGroup, errors chan<- error) <-chan *job.Job {
 	tick := time.Tick(p.interval)
 	jobs := make(chan *job.Job)
 
@@ -76,17 +73,17 @@ func (p *Poller) poll(ctx context.Context, queues []string, wg *sync.WaitGroup, 
 				return
 
 			case <-tick:
-				if err := p.poolTick(queues, jobs); err != nil {
+				if err := p.pollTick(queues, jobs); err != nil {
 					errors <- err
 				}
 			}
 		}
 	}()
 
-	return jobs, nil
+	return jobs
 }
 
-func (p *Poller) poolTick(queues []string, jobs chan<- *job.Job) error {
+func (p *Poller) pollTick(queues []string, jobs chan<- *job.Job) error {
 	conn, err := p.pool.Conn()
 	if err != nil {
 		return err
