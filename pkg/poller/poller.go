@@ -56,7 +56,7 @@ func (p *Poller) Start(ctx context.Context, queues []string, handlers map[string
 }
 
 func (p *Poller) poll(ctx context.Context, queues []string, wg *sync.WaitGroup, errors chan<- error) <-chan *job.Job {
-	tick := time.Tick(p.interval)
+	ticker := time.NewTicker(p.interval)
 	jobs := make(chan *job.Job)
 
 	wg.Add(1)
@@ -64,6 +64,7 @@ func (p *Poller) poll(ctx context.Context, queues []string, wg *sync.WaitGroup, 
 	go func() {
 		defer func() {
 			close(jobs)
+			ticker.Stop()
 			wg.Done()
 		}()
 
@@ -72,7 +73,7 @@ func (p *Poller) poll(ctx context.Context, queues []string, wg *sync.WaitGroup, 
 			case <-ctx.Done():
 				return
 
-			case <-tick:
+			case <-ticker.C:
 				if err := p.pollTick(queues, jobs); err != nil {
 					errors <- err
 				}
