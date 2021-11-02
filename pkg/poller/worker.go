@@ -42,7 +42,10 @@ func (w *Worker) Work(ctx context.Context, jobs <-chan *job.Job, wg *sync.WaitGr
 
 	go func() {
 		defer func() {
-			w.untrack()
+			if err := w.untrack(); err != nil {
+				errors <- err
+			}
+
 			wg.Done()
 		}()
 
@@ -67,11 +70,14 @@ func (w *Worker) handleJob(jb *job.Job) error {
 	}
 	defer conn.Close()
 
-	err = w.run(conn, jb)
-	if err != nil {
-		w.fail(conn, jb, err)
+	if err = w.run(conn, jb); err != nil {
+		if err := w.fail(conn, jb, err); err != nil {
+			return err
+		}
 	} else {
-		w.success(conn, jb)
+		if err := w.success(conn, jb); err != nil {
+			return err
+		}
 	}
 
 	return err
@@ -150,6 +156,9 @@ func (w *Worker) fail(conn db.Conn, job *job.Job, err error) error {
 		return fmt.Errorf("Marshal failed during %w for job %v", err, job)
 	}
 
-	conn.Send("RPUSH", fmt.Sprintf("%s:failed", w.Namespace), buf)
+	if err := conn.Send("RPUSH", fmt.Sprintf("%s:failed", w.Namespace), buf); err != nil {
+		return err
+	}
+
 	return w.Track.fail(conn)
 }

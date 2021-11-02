@@ -11,13 +11,6 @@ import (
 	"github.com/snobb/goresq/test/assert"
 )
 
-type pluginData struct {
-	method string
-	queue  string
-	class  string
-	args   []interface{}
-}
-
 type plugin struct {
 	beforeCount, afterCount int
 	beforeFunc              func(queue, class string, args []interface{}) error

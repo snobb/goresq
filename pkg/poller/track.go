@@ -38,37 +38,76 @@ func (t *Track) String() string {
 }
 
 func (t *Track) track(conn db.Conn) error {
-	conn.Send("SADD", fmt.Sprintf("%s:workers", t.Namespace), t)
-	conn.Send("SET", fmt.Sprintf("%s:stat:processed:%v", t.Namespace, t), "0")
-	conn.Send("SET", fmt.Sprintf("%s:stat:failed:%v", t.Namespace, t), "0")
-	conn.Send("SET", fmt.Sprintf("%s:worker:%s:started", t.Namespace, t), int64(time.Now().Unix()))
+	if err := conn.Send("SADD", fmt.Sprintf("%s:workers", t.Namespace), t); err != nil {
+		return err
+	}
+
+	if err := conn.Send("SET", fmt.Sprintf("%s:stat:processed:%v", t.Namespace, t), "0"); err != nil {
+		return err
+	}
+
+	if err := conn.Send("SET", fmt.Sprintf("%s:stat:failed:%v", t.Namespace, t), "0"); err != nil {
+		return err
+	}
+
+	if err := conn.Send("SET", fmt.Sprintf("%s:worker:%s:started", t.Namespace, t), int64(time.Now().Unix())); err != nil {
+		return err
+	}
+
 	conn.Flush()
 
 	return nil
 }
 
 func (t *Track) untrack(conn db.Conn) error {
-	conn.Send("SREM", fmt.Sprintf("%s:workers", t.Namespace), t)
-	conn.Send("DEL", fmt.Sprintf("%s:stat:processed:%s", t.Namespace, t))
-	conn.Send("DEL", fmt.Sprintf("%s:stat:failed:%s", t.Namespace, t))
-	conn.Send("DEL", fmt.Sprintf("%s:worker:%s", t.Namespace, t))
-	conn.Send("DEL", fmt.Sprintf("%s:worker:%s:started", t.Namespace, t))
+	if err := conn.Send("SREM", fmt.Sprintf("%s:workers", t.Namespace), t); err != nil {
+		return err
+	}
+
+	if err := conn.Send("DEL", fmt.Sprintf("%s:stat:processed:%s", t.Namespace, t)); err != nil {
+		return err
+	}
+
+	if err := conn.Send("DEL", fmt.Sprintf("%s:stat:failed:%s", t.Namespace, t)); err != nil {
+		return err
+	}
+
+	if err := conn.Send("DEL", fmt.Sprintf("%s:worker:%s", t.Namespace, t)); err != nil {
+		return err
+	}
+
+	if err := conn.Send("DEL", fmt.Sprintf("%s:worker:%s:started", t.Namespace, t)); err != nil {
+		return err
+	}
+
 	conn.Flush()
 
 	return nil
 }
 
 func (t *Track) success(conn db.Conn) error {
-	conn.Send("INCR", fmt.Sprintf("%s:stat:processed", t.Namespace))
-	conn.Send("INCR", fmt.Sprintf("%s:stat:processed:%s", t.Namespace, t))
+	if err := conn.Send("INCR", fmt.Sprintf("%s:stat:processed", t.Namespace)); err != nil {
+		return err
+	}
+
+	if err := conn.Send("INCR", fmt.Sprintf("%s:stat:processed:%s", t.Namespace, t)); err != nil {
+		return err
+	}
+
 	conn.Flush()
 
 	return nil
 }
 
 func (t *Track) fail(conn db.Conn) error {
-	conn.Send("INCR", fmt.Sprintf("%s:stat:failed", t.Namespace))
-	conn.Send("INCR", fmt.Sprintf("%s:stat:failed:%s", t.Namespace, t))
+	if err := conn.Send("INCR", fmt.Sprintf("%s:stat:failed", t.Namespace)); err != nil {
+		return err
+	}
+
+	if err := conn.Send("INCR", fmt.Sprintf("%s:stat:failed:%s", t.Namespace, t)); err != nil {
+		return err
+	}
+
 	conn.Flush()
 
 	return nil
