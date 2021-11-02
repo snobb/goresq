@@ -6,16 +6,19 @@ all: fmt vet test
 vet:
 	go vet ./...
 
+lint:
+	golangci-lint run
+
 fmt:
 	gofmt -l -w .
 
 test:
 	go test -cover ./...
 
-run:
-	go run ./examples/...
+run-example:
+	go run ${EXAMPLESRC}/...
 
-examples: vet fmt
+example: vet lint fmt
 	go build -o ./bin/${TARGET} ${EXAMPLESRC}
 
 clean:
