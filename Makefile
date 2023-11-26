@@ -18,6 +18,10 @@ test:
 run-example:
 	go run ${EXAMPLESRC}/...
 
+generate:
+	go get github.com/matryer/moq@latest
+	go generate ./pkg/...
+
 example: vet lint fmt
 	go build -o ./bin/${TARGET} ${EXAMPLESRC}
 

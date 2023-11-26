@@ -14,22 +14,22 @@ var _ db.Pooler = &PoolerMock{}
 
 // PoolerMock is a mock implementation of db.Pooler.
 //
-// 	func TestSomethingThatUsesPooler(t *testing.T) {
+//	func TestSomethingThatUsesPooler(t *testing.T) {
 //
-// 		// make and configure a mocked db.Pooler
-// 		mockedPooler := &PoolerMock{
-// 			CloseFunc: func() error {
-// 				panic("mock out the Close method")
-// 			},
-// 			ConnFunc: func() (db.Conn, error) {
-// 				panic("mock out the Conn method")
-// 			},
-// 		}
+//		// make and configure a mocked db.Pooler
+//		mockedPooler := &PoolerMock{
+//			CloseFunc: func() error {
+//				panic("mock out the Close method")
+//			},
+//			ConnFunc: func() (db.Conn, error) {
+//				panic("mock out the Conn method")
+//			},
+//		}
 //
-// 		// use mockedPooler in code that requires db.Pooler
-// 		// and then make assertions.
+//		// use mockedPooler in code that requires db.Pooler
+//		// and then make assertions.
 //
-// 	}
+//	}
 type PoolerMock struct {
 	// CloseFunc mocks the Close method.
 	CloseFunc func() error
@@ -65,7 +65,8 @@ func (mock *PoolerMock) Close() error {
 
 // CloseCalls gets all the calls that were made to Close.
 // Check the length with:
-//     len(mockedPooler.CloseCalls())
+//
+//	len(mockedPooler.CloseCalls())
 func (mock *PoolerMock) CloseCalls() []struct {
 } {
 	var calls []struct {
@@ -91,7 +92,8 @@ func (mock *PoolerMock) Conn() (db.Conn, error) {
 
 // ConnCalls gets all the calls that were made to Conn.
 // Check the length with:
-//     len(mockedPooler.ConnCalls())
+//
+//	len(mockedPooler.ConnCalls())
 func (mock *PoolerMock) ConnCalls() []struct {
 } {
 	var calls []struct {
@@ -108,34 +110,34 @@ var _ db.Conn = &ConnMock{}
 
 // ConnMock is a mock implementation of db.Conn.
 //
-// 	func TestSomethingThatUsesConn(t *testing.T) {
+//	func TestSomethingThatUsesConn(t *testing.T) {
 //
-// 		// make and configure a mocked db.Conn
-// 		mockedConn := &ConnMock{
-// 			CloseFunc: func() error {
-// 				panic("mock out the Close method")
-// 			},
-// 			DoFunc: func(commandName string, args ...interface{}) (interface{}, error) {
-// 				panic("mock out the Do method")
-// 			},
-// 			ErrFunc: func() error {
-// 				panic("mock out the Err method")
-// 			},
-// 			FlushFunc: func() error {
-// 				panic("mock out the Flush method")
-// 			},
-// 			ReceiveFunc: func() (interface{}, error) {
-// 				panic("mock out the Receive method")
-// 			},
-// 			SendFunc: func(commandName string, args ...interface{}) error {
-// 				panic("mock out the Send method")
-// 			},
-// 		}
+//		// make and configure a mocked db.Conn
+//		mockedConn := &ConnMock{
+//			CloseFunc: func() error {
+//				panic("mock out the Close method")
+//			},
+//			DoFunc: func(commandName string, args ...interface{}) (interface{}, error) {
+//				panic("mock out the Do method")
+//			},
+//			ErrFunc: func() error {
+//				panic("mock out the Err method")
+//			},
+//			FlushFunc: func() error {
+//				panic("mock out the Flush method")
+//			},
+//			ReceiveFunc: func() (interface{}, error) {
+//				panic("mock out the Receive method")
+//			},
+//			SendFunc: func(commandName string, args ...interface{}) error {
+//				panic("mock out the Send method")
+//			},
+//		}
 //
-// 		// use mockedConn in code that requires db.Conn
-// 		// and then make assertions.
+//		// use mockedConn in code that requires db.Conn
+//		// and then make assertions.
 //
-// 	}
+//	}
 type ConnMock struct {
 	// CloseFunc mocks the Close method.
 	CloseFunc func() error
@@ -207,7 +209,8 @@ func (mock *ConnMock) Close() error {
 
 // CloseCalls gets all the calls that were made to Close.
 // Check the length with:
-//     len(mockedConn.CloseCalls())
+//
+//	len(mockedConn.CloseCalls())
 func (mock *ConnMock) CloseCalls() []struct {
 } {
 	var calls []struct {
@@ -238,7 +241,8 @@ func (mock *ConnMock) Do(commandName string, args ...interface{}) (interface{}, 
 
 // DoCalls gets all the calls that were made to Do.
 // Check the length with:
-//     len(mockedConn.DoCalls())
+//
+//	len(mockedConn.DoCalls())
 func (mock *ConnMock) DoCalls() []struct {
 	CommandName string
 	Args        []interface{}
@@ -268,7 +272,8 @@ func (mock *ConnMock) Err() error {
 
 // ErrCalls gets all the calls that were made to Err.
 // Check the length with:
-//     len(mockedConn.ErrCalls())
+//
+//	len(mockedConn.ErrCalls())
 func (mock *ConnMock) ErrCalls() []struct {
 } {
 	var calls []struct {
@@ -294,7 +299,8 @@ func (mock *ConnMock) Flush() error {
 
 // FlushCalls gets all the calls that were made to Flush.
 // Check the length with:
-//     len(mockedConn.FlushCalls())
+//
+//	len(mockedConn.FlushCalls())
 func (mock *ConnMock) FlushCalls() []struct {
 } {
 	var calls []struct {
@@ -320,7 +326,8 @@ func (mock *ConnMock) Receive() (interface{}, error) {
 
 // ReceiveCalls gets all the calls that were made to Receive.
 // Check the length with:
-//     len(mockedConn.ReceiveCalls())
+//
+//	len(mockedConn.ReceiveCalls())
 func (mock *ConnMock) ReceiveCalls() []struct {
 } {
 	var calls []struct {
@@ -351,7 +358,8 @@ func (mock *ConnMock) Send(commandName string, args ...interface{}) error {
 
 // SendCalls gets all the calls that were made to Send.
 // Check the length with:
-//     len(mockedConn.SendCalls())
+//
+//	len(mockedConn.SendCalls())
 func (mock *ConnMock) SendCalls() []struct {
 	CommandName string
 	Args        []interface{}
