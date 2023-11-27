@@ -37,7 +37,7 @@ func (q *Queue) Enqueue(ctx context.Context, queue, class string, data []interfa
 	defer conn.Close()
 
 	for _, plugin := range q.plugins {
-		if err := plugin.BeforeEnqueue(queue, class, data); err != nil {
+		if err := plugin.BeforeEnqueue(ctx, queue, class, data); err != nil {
 			return err
 		}
 	}
@@ -61,7 +61,7 @@ func (q *Queue) Enqueue(ctx context.Context, queue, class string, data []interfa
 	}
 
 	for _, plugin := range q.plugins {
-		if err := plugin.AfterEnqueue(queue, class, data); err != nil {
+		if err := plugin.AfterEnqueue(ctx, queue, class, data); err != nil {
 			return err
 		}
 	}

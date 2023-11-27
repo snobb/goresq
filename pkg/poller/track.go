@@ -18,7 +18,7 @@ type Track struct {
 	Queues    []string
 }
 
-func newTrack(id, Namespace string, queues []string) Track {
+func newTrack(id, ns string, queues []string) Track {
 	hostname, err := os.Hostname()
 	if err != nil {
 		panic(err)
@@ -28,7 +28,7 @@ func newTrack(id, Namespace string, queues []string) Track {
 		Hostname:  hostname,
 		Pid:       os.Getpid(),
 		ID:        id,
-		Namespace: Namespace,
+		Namespace: ns,
 		Queues:    queues,
 	}
 }
@@ -50,7 +50,7 @@ func (t *Track) track(conn db.Conn) error {
 		return err
 	}
 
-	if err := conn.Send("SET", fmt.Sprintf("%s:worker:%s:started", t.Namespace, t), int64(time.Now().Unix())); err != nil {
+	if err := conn.Send("SET", fmt.Sprintf("%s:worker:%s:started", t.Namespace, t), time.Now().Unix()); err != nil {
 		return err
 	}
 

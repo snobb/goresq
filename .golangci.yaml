@@ -1,0 +1,51 @@
+run:
+  # Timeout for analysis, e.g. 30s, 5m.
+  # Default: 1m
+  timeout: 3m
+
+linters:
+  # Enable specific linter
+  # https://golangci-lint.run/usage/linters/#enabled-by-default-linters
+  enable:
+    - bodyclose
+    - durationcheck
+    - errorlint
+    - gocritic
+    - goimports
+    - gosec
+    - misspell
+    - nakedret
+    - nolintlint
+    - revive
+    - unconvert
+    - unparam
+    - whitespace
+
+  issues:
+    # Excluding configuration per-path, per-linter, per-text and per-source
+    exclude-rules:
+      # Slowloris alert
+      - text: "G112:"
+        linters:
+          - gosec
+
+      # net/http serve function timeout
+      - text: "G114:"
+        linters:
+          - gosec
+
+
+# All available settings of specific linters.
+linters-settings:
+  revive:
+    # Sets the default failure confidence.
+    confidence: 0.0
+
+    rules:
+      - name: package-comments
+        disabled: true
+
+  gosec:
+    excludes:
+      - G112 # Potential slowloris attack
+      - G114 # Use of net/http serve function that has no support for setting timeouts

@@ -54,7 +54,7 @@ func (w *Worker) Work(ctx context.Context, jobs <-chan *job.Job, wg *sync.WaitGr
 				continue
 			}
 
-			if err := w.handleJob(jb); err != nil {
+			if err := w.handleJob(ctx, jb); err != nil {
 				errors <- err
 			}
 		}
@@ -63,14 +63,14 @@ func (w *Worker) Work(ctx context.Context, jobs <-chan *job.Job, wg *sync.WaitGr
 	return nil
 }
 
-func (w *Worker) handleJob(jb *job.Job) error {
+func (w *Worker) handleJob(ctx context.Context, jb *job.Job) error {
 	conn, err := w.pool.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 
-	if err = w.run(conn, jb); err != nil {
+	if err = w.run(ctx, jb); err != nil {
 		if err := w.fail(conn, jb, err); err != nil {
 			return err
 		}
@@ -83,7 +83,7 @@ func (w *Worker) handleJob(jb *job.Job) error {
 	return err
 }
 
-func (w *Worker) run(conn db.Conn, jb *job.Job) (err error) {
+func (w *Worker) run(ctx context.Context, jb *job.Job) (err error) {
 	var result job.Result
 	handler, ok := w.handlers[jb.Payload.Class]
 	if !ok {
@@ -91,20 +91,20 @@ func (w *Worker) run(conn db.Conn, jb *job.Job) (err error) {
 	}
 
 	for _, plugin := range handler.Plugins() {
-		if err = plugin.BeforePerform(jb.Queue, jb.Payload.Class, jb.Payload.Args); err != nil {
+		if err = plugin.BeforePerform(ctx, jb.Queue, jb.Payload.Class, jb.Payload.Args); err != nil {
 			return
 		}
 	}
 
 	defer func() {
 		for _, plugin := range handler.Plugins() {
-			if err = plugin.AfterPerform(jb.Queue, jb.Payload.Class, jb.Payload.Args, result, err); err != nil {
+			if err = plugin.AfterPerform(ctx, jb.Queue, jb.Payload.Class, jb.Payload.Args, result, err); err != nil {
 				return
 			}
 		}
 	}()
 
-	result, err = handler.Perform(jb.Queue, jb.Payload.Class, jb.Payload.Args)
+	result, err = handler.Perform(ctx, jb.Queue, jb.Payload.Class, jb.Payload.Args)
 	return
 }
 
@@ -130,7 +130,7 @@ func (w *Worker) track() error {
 	return w.Track.track(conn)
 }
 
-func (w *Worker) success(conn db.Conn, job *job.Job) error {
+func (w *Worker) success(conn db.Conn, _ *job.Job) error {
 	return w.Track.success(conn)
 }
 

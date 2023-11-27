@@ -13,20 +13,20 @@ import (
 
 type plugin struct {
 	beforeCount, afterCount int
-	beforeFunc              func(queue, class string, args []interface{}) error
-	afterFunc               func(queue, class string, args []interface{}) error
+	beforeFunc              func(ctx context.Context, queue, class string, args []interface{}) error
+	afterFunc               func(ctx context.Context, queue, class string, args []interface{}) error
 }
 
 // BeforeEnqueue is a function to run before handling a job.
-func (p *plugin) BeforeEnqueue(queue string, class string, args []interface{}) error {
+func (p *plugin) BeforeEnqueue(ctx context.Context, queue string, class string, args []interface{}) error {
 	p.beforeCount++
-	return p.beforeFunc(queue, class, args)
+	return p.beforeFunc(ctx, queue, class, args)
 }
 
 // AfterEnqueue is a function to run after handling a job
-func (p *plugin) AfterEnqueue(queue string, class string, args []interface{}) error {
+func (p *plugin) AfterEnqueue(ctx context.Context, queue string, class string, args []interface{}) error {
 	p.afterCount++
-	return p.afterFunc(queue, class, args)
+	return p.afterFunc(ctx, queue, class, args)
 }
 
 func TestQueue_Enqueue(t *testing.T) {
@@ -59,13 +59,13 @@ func TestQueue_Enqueue(t *testing.T) {
 			data: []interface{}{"taskdata"},
 			plugins: []*plugin{
 				{
-					beforeFunc: func(q, c string, as []interface{}) error {
+					beforeFunc: func(_ context.Context, q, c string, as []interface{}) error {
 						assert.Eq(t, class, c)
 						assert.Eq(t, queueName, q)
 						assert.Eq(t, "taskdata", as[0].(string))
 						return nil
 					},
-					afterFunc: func(q, c string, as []interface{}) error {
+					afterFunc: func(_ context.Context, q, c string, as []interface{}) error {
 						assert.Eq(t, class, c)
 						assert.Eq(t, queueName, q)
 						assert.Eq(t, "taskdata", as[0].(string))
@@ -85,13 +85,13 @@ func TestQueue_Enqueue(t *testing.T) {
 			data: []interface{}{"taskdata"},
 			plugins: []*plugin{
 				{
-					beforeFunc: func(q, c string, as []interface{}) error {
+					beforeFunc: func(_ context.Context, q, c string, as []interface{}) error {
 						assert.Eq(t, class, c)
 						assert.Eq(t, queueName, q)
 						assert.Eq(t, "taskdata", as[0].(string))
 						return nil
 					},
-					afterFunc: func(q, c string, as []interface{}) error {
+					afterFunc: func(_ context.Context, q, c string, as []interface{}) error {
 						assert.Eq(t, class, c)
 						assert.Eq(t, queueName, q)
 						assert.Eq(t, "taskdata", as[0].(string))
@@ -109,13 +109,13 @@ func TestQueue_Enqueue(t *testing.T) {
 			data: []interface{}{"taskdata"},
 			plugins: []*plugin{
 				{
-					beforeFunc: func(q, c string, as []interface{}) error {
+					beforeFunc: func(ctx context.Context, q, c string, as []interface{}) error {
 						assert.Eq(t, class, c)
 						assert.Eq(t, queueName, q)
 						assert.Eq(t, "taskdata", as[0].(string))
 						return nil
 					},
-					afterFunc: func(q, c string, as []interface{}) error {
+					afterFunc: func(ctx context.Context, q, c string, as []interface{}) error {
 						assert.Eq(t, class, c)
 						assert.Eq(t, queueName, q)
 						assert.Eq(t, "taskdata", as[0].(string))
@@ -133,13 +133,13 @@ func TestQueue_Enqueue(t *testing.T) {
 			data: []interface{}{"taskdata"},
 			plugins: []*plugin{
 				{
-					beforeFunc: func(q, c string, as []interface{}) error {
+					beforeFunc: func(_ context.Context, q, c string, as []interface{}) error {
 						assert.Eq(t, class, c)
 						assert.Eq(t, queueName, q)
 						assert.Eq(t, "taskdata", as[0].(string))
 						return nil
 					},
-					afterFunc: func(q, c string, as []interface{}) error {
+					afterFunc: func(_ context.Context, q, c string, as []interface{}) error {
 						assert.Eq(t, class, c)
 						assert.Eq(t, queueName, q)
 						assert.Eq(t, "taskdata", as[0].(string))
@@ -157,13 +157,13 @@ func TestQueue_Enqueue(t *testing.T) {
 			data: []interface{}{"taskdata"},
 			plugins: []*plugin{
 				{
-					beforeFunc: func(q, c string, as []interface{}) error {
+					beforeFunc: func(_ context.Context, q, c string, as []interface{}) error {
 						assert.Eq(t, class, c)
 						assert.Eq(t, queueName, q)
 						assert.Eq(t, "taskdata", as[0].(string))
 						return fmt.Errorf("spanner")
 					},
-					afterFunc: func(q, c string, as []interface{}) error {
+					afterFunc: func(_ context.Context, q, c string, as []interface{}) error {
 						assert.Eq(t, class, c)
 						assert.Eq(t, queueName, q)
 						assert.Eq(t, "taskdata", as[0].(string))
@@ -180,13 +180,13 @@ func TestQueue_Enqueue(t *testing.T) {
 			data: []interface{}{"taskdata"},
 			plugins: []*plugin{
 				{
-					beforeFunc: func(q, c string, as []interface{}) error {
+					beforeFunc: func(_ context.Context, q, c string, as []interface{}) error {
 						assert.Eq(t, class, c)
 						assert.Eq(t, queueName, q)
 						assert.Eq(t, "taskdata", as[0].(string))
 						return nil
 					},
-					afterFunc: func(q, c string, as []interface{}) error {
+					afterFunc: func(_ context.Context, q, c string, as []interface{}) error {
 						assert.Eq(t, class, c)
 						assert.Eq(t, queueName, q)
 						assert.Eq(t, "taskdata", as[0].(string))

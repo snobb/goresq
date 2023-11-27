@@ -28,7 +28,7 @@ func TestPoller_Start(t *testing.T) {
 		{
 			name:     "should poll and get a job",
 			interval: 20 * time.Millisecond,
-			perform: func(queue, class string, args []json.RawMessage) (job.Result, error) {
+			perform: func(ctx context.Context, queue, class string, args []json.RawMessage) (job.Result, error) {
 				return "ok", nil
 			},
 			concur: 2,
@@ -40,7 +40,7 @@ func TestPoller_Start(t *testing.T) {
 		{
 			name:     "should poll and get a job but fail in performer",
 			interval: 20 * time.Millisecond,
-			perform: func(queue, class string, args []json.RawMessage) (job.Result, error) {
+			perform: func(ctx context.Context, queue, class string, args []json.RawMessage) (job.Result, error) {
 				return nil, fmt.Errorf("spanner")
 			},
 			concur: 1,
@@ -53,7 +53,7 @@ func TestPoller_Start(t *testing.T) {
 		{
 			name:     "should poll and get a job but fail in redis calls",
 			interval: 20 * time.Millisecond,
-			perform: func(queue, class string, args []json.RawMessage) (job.Result, error) {
+			perform: func(ctx context.Context, queue, class string, args []json.RawMessage) (job.Result, error) {
 				return nil, fmt.Errorf("spanner")
 			},
 			concur: 1,
@@ -67,7 +67,7 @@ func TestPoller_Start(t *testing.T) {
 		{
 			name:     "should poll and get a job but fail to decode job payload",
 			interval: 20 * time.Millisecond,
-			perform: func(queue, class string, args []json.RawMessage) (job.Result, error) {
+			perform: func(ctx context.Context, queue, class string, args []json.RawMessage) (job.Result, error) {
 				t.Errorf("must not happen")
 				return nil, nil
 			},
