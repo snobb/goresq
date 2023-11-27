@@ -24,7 +24,7 @@ func (s *sumHandler) Plugins() []job.Plugin {
 	return s.plugins
 }
 
-func (s *sumHandler) Perform(queue string, class string, args []json.RawMessage) (job.Result, error) {
+func (s *sumHandler) Perform(ctx context.Context, queue string, class string, args []json.RawMessage) (job.Result, error) {
 	var params struct {
 		TaskData []int `json:"task_data"`
 	}
@@ -42,12 +42,12 @@ func (s *sumHandler) Perform(queue string, class string, args []json.RawMessage)
 type delayPlugin struct{}
 
 // BeforePerform is a function to run before handling a job.
-func (d *delayPlugin) BeforePerform(queue string, class string, args []json.RawMessage) error {
+func (d *delayPlugin) BeforePerform(ctx context.Context, queue string, class string, args []json.RawMessage) error {
 	return nil
 }
 
 // AfterPerform is a function to run after handling a job
-func (d *delayPlugin) AfterPerform(queue string, class string, args []json.RawMessage, result job.Result, err error) error {
+func (d *delayPlugin) AfterPerform(ctx context.Context, queue string, class string, args []json.RawMessage, result job.Result, err error) error {
 	fmt.Printf("result = %v  Delaying...\n", result)
 	time.Sleep(10 * time.Second)
 	return nil
@@ -66,13 +66,13 @@ func sumArray(nums ...int) int {
 type queueLogger struct{}
 
 // BeforeEnqueue is a function to run before handling a job.
-func (q *queueLogger) BeforeEnqueue(queue string, class string, args []interface{}) error {
+func (q *queueLogger) BeforeEnqueue(ctx context.Context, queue string, class string, args []interface{}) error {
 	log.Printf(":: enqueueing message: queue:%s, class:%s, args:%#v", queue, class, args)
 	return nil
 }
 
 // AfterEnqueue is a function to run after handling a job
-func (q *queueLogger) AfterEnqueue(queue string, class string, args []interface{}) error {
+func (q *queueLogger) AfterEnqueue(ctx context.Context, queue string, class string, args []interface{}) error {
 	log.Printf(":: enqueued message: queue:%s, class:%s, args:%#v", queue, class, args)
 	return nil
 }
@@ -106,8 +106,8 @@ func main() {
 			"task_data": []int{10, 20, 30},
 		}
 
-		q.Enqueue(context.Background(), "queue2.test", "sum", []interface{}{payload})
-		q.Enqueue(context.Background(), "queue1.test", "sum", []interface{}{payload})
+		_ = q.Enqueue(context.Background(), "queue2.test", "sum", []interface{}{payload})
+		_ = q.Enqueue(context.Background(), "queue1.test", "sum", []interface{}{payload})
 	}()
 
 	ctx, cancel := context.WithCancel(context.Background())

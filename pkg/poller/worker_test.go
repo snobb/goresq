@@ -43,7 +43,7 @@ func TestWorker_Work(t *testing.T) {
 					Args:  []json.RawMessage{json.RawMessage(helpers.Marshal(map[string]string{"foo": "bar"}))},
 				},
 			},
-			perform: func(queue, class string, args []json.RawMessage) (job.Result, error) {
+			perform: func(ctx context.Context, queue, class string, args []json.RawMessage) (job.Result, error) {
 				assert.Eq(t, "queue1", queue)
 				assert.Eq(t, "test", class)
 				return "foobar", nil
@@ -78,7 +78,7 @@ func TestWorker_Work(t *testing.T) {
 					Args:  []json.RawMessage{json.RawMessage(helpers.Marshal(map[string]string{"foo": "bar"}))},
 				},
 			},
-			perform: func(queue, class string, args []json.RawMessage) (job.Result, error) {
+			perform: func(ctx context.Context, queue, class string, args []json.RawMessage) (job.Result, error) {
 				assert.Eq(t, "queue1", queue)
 				assert.Eq(t, "test", class)
 				return nil, fmt.Errorf("spanner")
@@ -162,7 +162,7 @@ func TestWorker_Work(t *testing.T) {
 			handlers := map[string]job.Handler{"test": tt.perform}
 
 			w := poller.NewWorker(1, "resque", []string{"queue1", "queue2"}, handlers, mockedPool)
-			jobs <- &tt.job
+			jobs <- &(tt.job)
 
 			var wg sync.WaitGroup
 			ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)

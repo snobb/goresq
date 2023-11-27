@@ -72,7 +72,7 @@ func NewPool(config *Config) *Pool {
 			Dial: func() (redis.Conn, error) {
 				conn, err := redis.Dial("tcp", config.URI, dialOptions...)
 				if err != nil {
-					return nil, fmt.Errorf("Unable to connect to %s: %w", config.URI, err)
+					return nil, fmt.Errorf("unable to connect to %s: %w", config.URI, err)
 				}
 
 				return conn, nil
