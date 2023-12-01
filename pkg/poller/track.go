@@ -1,6 +1,7 @@
 package poller
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -37,78 +38,70 @@ func (t *Track) String() string {
 	return fmt.Sprintf("%s:%d-%s:%s", t.Hostname, t.Pid, t.ID, strings.Join(t.Queues, ","))
 }
 
-func (t *Track) track(conn db.Conn) error {
-	if err := conn.Send("SADD", fmt.Sprintf("%s:workers", t.Namespace), t); err != nil {
+func (t *Track) track(ctx context.Context, dbh db.Accessor) error {
+	if _, err := dbh.SAdd(ctx, fmt.Sprintf("%s:workers", t.Namespace), t); err != nil {
 		return err
 	}
 
-	if err := conn.Send("SET", fmt.Sprintf("%s:stat:processed:%v", t.Namespace, t), "0"); err != nil {
+	if _, err := dbh.Set(ctx, fmt.Sprintf("%s:stat:processed:%v", t.Namespace, t), "0", 0); err != nil {
 		return err
 	}
 
-	if err := conn.Send("SET", fmt.Sprintf("%s:stat:failed:%v", t.Namespace, t), "0"); err != nil {
+	if _, err := dbh.Set(ctx, fmt.Sprintf("%s:stat:failed:%v", t.Namespace, t), "0", 0); err != nil {
 		return err
 	}
 
-	if err := conn.Send("SET", fmt.Sprintf("%s:worker:%s:started", t.Namespace, t), time.Now().Unix()); err != nil {
+	if _, err := dbh.Set(ctx, fmt.Sprintf("%s:worker:%s:started", t.Namespace, t), time.Now().Unix(), 0); err != nil {
 		return err
 	}
-
-	_ = conn.Flush()
 
 	return nil
 }
 
-func (t *Track) untrack(conn db.Conn) error {
-	if err := conn.Send("SREM", fmt.Sprintf("%s:workers", t.Namespace), t); err != nil {
+func (t *Track) untrack(ctx context.Context, dbh db.Accessor) error {
+	if _, err := dbh.SRem(ctx, fmt.Sprintf("%s:workers", t.Namespace), t); err != nil {
 		return err
 	}
 
-	if err := conn.Send("DEL", fmt.Sprintf("%s:stat:processed:%s", t.Namespace, t)); err != nil {
+	if _, err := dbh.Del(ctx, fmt.Sprintf("%s:stat:processed:%s", t.Namespace, t)); err != nil {
 		return err
 	}
 
-	if err := conn.Send("DEL", fmt.Sprintf("%s:stat:failed:%s", t.Namespace, t)); err != nil {
+	if _, err := dbh.Del(ctx, fmt.Sprintf("%s:stat:failed:%s", t.Namespace, t)); err != nil {
 		return err
 	}
 
-	if err := conn.Send("DEL", fmt.Sprintf("%s:worker:%s", t.Namespace, t)); err != nil {
+	if _, err := dbh.Del(ctx, fmt.Sprintf("%s:worker:%s", t.Namespace, t)); err != nil {
 		return err
 	}
 
-	if err := conn.Send("DEL", fmt.Sprintf("%s:worker:%s:started", t.Namespace, t)); err != nil {
+	if _, err := dbh.Del(ctx, fmt.Sprintf("%s:worker:%s:started", t.Namespace, t)); err != nil {
 		return err
 	}
-
-	_ = conn.Flush()
 
 	return nil
 }
 
-func (t *Track) success(conn db.Conn) error {
-	if err := conn.Send("INCR", fmt.Sprintf("%s:stat:processed", t.Namespace)); err != nil {
+func (t *Track) success(ctx context.Context, dbh db.Accessor) error {
+	if _, err := dbh.Incr(ctx, fmt.Sprintf("%s:stat:processed", t.Namespace)); err != nil {
 		return err
 	}
 
-	if err := conn.Send("INCR", fmt.Sprintf("%s:stat:processed:%s", t.Namespace, t)); err != nil {
+	if _, err := dbh.Incr(ctx, fmt.Sprintf("%s:stat:processed:%s", t.Namespace, t)); err != nil {
 		return err
 	}
-
-	_ = conn.Flush()
 
 	return nil
 }
 
-func (t *Track) fail(conn db.Conn) error {
-	if err := conn.Send("INCR", fmt.Sprintf("%s:stat:failed", t.Namespace)); err != nil {
+func (t *Track) fail(ctx context.Context, dbh db.Accessor) error {
+	if _, err := dbh.Incr(ctx, fmt.Sprintf("%s:stat:failed", t.Namespace)); err != nil {
 		return err
 	}
 
-	if err := conn.Send("INCR", fmt.Sprintf("%s:stat:failed:%s", t.Namespace, t)); err != nil {
+	if _, err := dbh.Incr(ctx, fmt.Sprintf("%s:stat:failed:%s", t.Namespace, t)); err != nil {
 		return err
 	}
-
-	_ = conn.Flush()
 
 	return nil
 }

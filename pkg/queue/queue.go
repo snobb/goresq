@@ -11,15 +11,15 @@ import (
 // Queue is the job enqueuer.
 type Queue struct {
 	Namespace string
-	pool      db.Pooler
+	db        db.Accessor
 	plugins   []Plugin
 }
 
 // New creates a new instance of Queue
-func New(pool db.Pooler) *Queue {
+func New(db db.Accessor) *Queue {
 	return &Queue{
 		Namespace: "resque",
-		pool:      pool,
+		db:        db,
 	}
 }
 
@@ -30,12 +30,6 @@ func (q *Queue) RegisterPlugins(plugin ...Plugin) {
 
 // Enqueue enqueues a job into the queue.
 func (q *Queue) Enqueue(ctx context.Context, queue, class string, data []interface{}) error {
-	conn, err := q.pool.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-
 	for _, plugin := range q.plugins {
 		if err := plugin.BeforeEnqueue(ctx, queue, class, data); err != nil {
 			return err
@@ -52,11 +46,11 @@ func (q *Queue) Enqueue(ctx context.Context, queue, class string, data []interfa
 		return err
 	}
 
-	if err = conn.Send("RPUSH", fmt.Sprintf("%s:queue:%s", q.Namespace, queue), buf); err != nil {
+	if _, err = q.db.RPush(ctx, fmt.Sprintf("%s:queue:%s", q.Namespace, queue), buf); err != nil {
 		return err
 	}
 
-	if err = conn.Send("SADD", fmt.Sprintf("%s:queues", q.Namespace), queue); err != nil {
+	if _, err = q.db.SAdd(ctx, fmt.Sprintf("%s:queues", q.Namespace), queue); err != nil {
 		return err
 	}
 

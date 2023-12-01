@@ -15,25 +15,25 @@ import (
 type Worker struct {
 	Track
 	runAt    time.Time
-	pool     db.Pooler
+	db       db.Accessor
 	handlers map[string]job.Handler
 }
 
 const connCoolDown = 1 * time.Second
 
 // NewWorker creates a new worker.
-func NewWorker(id int, namespace string, queues []string, handlers map[string]job.Handler, pool db.Pooler) *Worker {
+func NewWorker(id int, namespace string, queues []string, handlers map[string]job.Handler, acc db.Accessor) *Worker {
 	return &Worker{
 		Track:    newTrack(fmt.Sprintf("worker%d", id), namespace, queues),
 		runAt:    time.Now(),
-		pool:     pool,
+		db:       acc,
 		handlers: handlers,
 	}
 }
 
 // Work is a method that starts job worker and processes jobs.
 func (w *Worker) Work(ctx context.Context, jobs <-chan *job.Job, wg *sync.WaitGroup, errors chan<- error) error {
-	if err := w.track(); err != nil {
+	if err := w.track(ctx); err != nil {
 		errors <- err
 		return err
 	}
@@ -42,7 +42,7 @@ func (w *Worker) Work(ctx context.Context, jobs <-chan *job.Job, wg *sync.WaitGr
 
 	go func() {
 		defer func() {
-			if err := w.untrack(); err != nil {
+			if err := w.untrack(ctx); err != nil {
 				errors <- err
 			}
 
@@ -63,19 +63,13 @@ func (w *Worker) Work(ctx context.Context, jobs <-chan *job.Job, wg *sync.WaitGr
 	return nil
 }
 
-func (w *Worker) handleJob(ctx context.Context, jb *job.Job) error {
-	conn, err := w.pool.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-
+func (w *Worker) handleJob(ctx context.Context, jb *job.Job) (err error) {
 	if err = w.run(ctx, jb); err != nil {
-		if err := w.fail(conn, jb, err); err != nil {
+		if err = w.fail(ctx, jb, err); err != nil {
 			return err
 		}
 	} else {
-		if err := w.success(conn, jb); err != nil {
+		if err = w.success(ctx, jb); err != nil {
 			return err
 		}
 	}
@@ -108,33 +102,19 @@ func (w *Worker) run(ctx context.Context, jb *job.Job) (err error) {
 	return
 }
 
-func (w *Worker) untrack() error {
-	conn, err := w.pool.Conn()
-	if err != nil {
-		time.Sleep(connCoolDown)
-		return err
-	}
-	defer conn.Close()
-
-	return w.Track.untrack(conn)
+func (w *Worker) untrack(ctx context.Context) error {
+	return w.Track.untrack(ctx, w.db)
 }
 
-func (w *Worker) track() error {
-	conn, err := w.pool.Conn()
-	if err != nil {
-		time.Sleep(connCoolDown)
-		return err
-	}
-	defer conn.Close()
-
-	return w.Track.track(conn)
+func (w *Worker) track(ctx context.Context) error {
+	return w.Track.track(ctx, w.db)
 }
 
-func (w *Worker) success(conn db.Conn, _ *job.Job) error {
-	return w.Track.success(conn)
+func (w *Worker) success(ctx context.Context, _ *job.Job) error {
+	return w.Track.success(ctx, w.db)
 }
 
-func (w *Worker) fail(conn db.Conn, job *job.Job, err error) error {
+func (w *Worker) fail(ctx context.Context, job *job.Job, err error) error {
 	resqueError := struct {
 		FailedAt  time.Time
 		Payload   json.RawMessage
@@ -156,9 +136,9 @@ func (w *Worker) fail(conn db.Conn, job *job.Job, err error) error {
 		return fmt.Errorf("marshal failed during %w for job %v", err, job)
 	}
 
-	if err := conn.Send("RPUSH", fmt.Sprintf("%s:failed", w.Namespace), buf); err != nil {
+	if _, err := w.db.RPush(ctx, fmt.Sprintf("%s:failed", w.Namespace), buf); err != nil {
 		return err
 	}
 
-	return w.Track.fail(conn)
+	return w.Track.fail(ctx, w.db)
 }

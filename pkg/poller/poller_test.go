@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/snobb/goresq/pkg/db"
 	"github.com/snobb/goresq/pkg/db/mock"
 	"github.com/snobb/goresq/pkg/job"
 	"github.com/snobb/goresq/pkg/poller"
@@ -21,6 +20,7 @@ func TestPoller_Start(t *testing.T) {
 		concur      int
 		perform     job.PerformFunc
 		job         interface{}
+		wantCmd     []string
 		wantDbErr   bool
 		wantChanErr bool
 		wantErr     bool
@@ -80,41 +80,57 @@ func TestPoller_Start(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var redisCmds []string
-			mockedConn := &mock.ConnMock{
-				CloseFunc: func() error {
-					redisCmds = append(redisCmds, "Conn::Close")
-					return nil
+			mockedAccessor := &mock.AccessorMock{
+				DecrFunc: func(ctx context.Context, key string) (int64, error) {
+					redisCmds = append(redisCmds, fmt.Sprintf("decr %s", key))
+					return 0, nil
 				},
-				DoFunc: func(commandName string, args ...interface{}) (interface{}, error) {
-					redisCmds = append(redisCmds, fmt.Sprintf("%s %s", commandName, args[0]))
-					return helpers.Marshal(tt.job), nil
+				DelFunc: func(ctx context.Context, keys ...string) (int64, error) {
+					redisCmds = append(redisCmds, fmt.Sprintf("del %s", keys[0]))
+					return 0, nil
 				},
-				ErrFunc: func() error {
-					panic("mock out the Err method")
+				DoFunc: func(ctx context.Context, args ...any) (any, error) {
+					panic("mock out the Do method")
 				},
-				FlushFunc: func() error {
-					redisCmds = append(redisCmds, "Conn::Flush")
-					return nil
+				GetFunc: func(ctx context.Context, key string) (string, error) {
+					redisCmds = append(redisCmds, fmt.Sprintf("get %s", key))
+					return "", nil
 				},
-				ReceiveFunc: func() (interface{}, error) {
-					panic("mock out the Receive method")
+				IncrFunc: func(ctx context.Context, key string) (int64, error) {
+					redisCmds = append(redisCmds, fmt.Sprintf("incr %s", key))
+					return 0, nil
 				},
-				SendFunc: func(commandName string, args ...interface{}) error {
-					redisCmds = append(redisCmds, fmt.Sprintf("%s %s", commandName, args[0]))
-					return nil
+				LPopFunc: func(ctx context.Context, key string) (any, error) {
+					redisCmds = append(redisCmds, fmt.Sprintf("lpop %s", key))
+					return nil, nil
+				},
+				LPushFunc: func(ctx context.Context, key string, value any) (any, error) {
+					redisCmds = append(redisCmds, fmt.Sprintf("lpush %s %v", key, value))
+					return nil, nil
+				},
+				RPopFunc: func(ctx context.Context, key string) (any, error) {
+					redisCmds = append(redisCmds, fmt.Sprintf("rpop %s", key))
+					return nil, nil
+				},
+				RPushFunc: func(ctx context.Context, key string, value any) (any, error) {
+					redisCmds = append(redisCmds, fmt.Sprintf("rpush %s %v", key, value))
+					return nil, nil
+				},
+				SAddFunc: func(ctx context.Context, key string, members ...any) (int64, error) {
+					redisCmds = append(redisCmds, fmt.Sprintf("sadd %s %v", key, members[0]))
+					return 0, nil
+				},
+				SRemFunc: func(ctx context.Context, key string, members ...any) (int64, error) {
+					redisCmds = append(redisCmds, fmt.Sprintf("srem %s %v", key, members[0]))
+					return 0, nil
+				},
+				SetFunc: func(ctx context.Context, key string, value any, exp time.Duration) (string, error) {
+					redisCmds = append(redisCmds, fmt.Sprintf("set %s %v %d", key, value, exp))
+					return "", nil
 				},
 			}
 
-			mockedPool := &mock.PoolerMock{
-				ConnFunc: func() (db.Conn, error) {
-					if tt.wantDbErr {
-						return nil, fmt.Errorf("db spanner")
-					}
-					return mockedConn, nil
-				},
-			}
-
-			p := poller.New(mockedPool, tt.interval, tt.concur)
+			p := poller.New(mockedAccessor, tt.interval, tt.concur)
 
 			queues := []string{"queue1", "queue1"}
 			errors := make(chan error)
@@ -140,6 +156,10 @@ func TestPoller_Start(t *testing.T) {
 
 			if err := p.Start(ctx, queues, handlers, errors); (err != nil) != tt.wantErr {
 				t.Errorf("Poller.Start() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			for _, cmd := range redisCmds {
+				fmt.Println(cmd)
 			}
 		})
 	}

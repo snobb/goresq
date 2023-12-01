@@ -17,16 +17,16 @@ type Poller struct {
 	Namespace string
 	interval  time.Duration
 	concur    int
-	pool      db.Pooler
+	db        db.Accessor
 }
 
 // New creates a new Poller
-func New(pool db.Pooler, interval time.Duration, concur int) *Poller {
+func New(db db.Accessor, interval time.Duration, concur int) *Poller {
 	return &Poller{
 		Namespace: "resque",
 		interval:  interval,
 		concur:    concur,
-		pool:      pool,
+		db:        db,
 	}
 }
 
@@ -38,7 +38,7 @@ func (p *Poller) Start(ctx context.Context, queues []string, handlers map[string
 	jobs := p.poll(ctx, queues, &wg, errors)
 
 	for i := 0; i < p.concur; i++ {
-		w := NewWorker(i, p.Namespace, queues, handlers, p.pool)
+		w := NewWorker(i, p.Namespace, queues, handlers, p.db)
 
 		if err := w.Work(ctx, jobs, &wg, errors); err != nil {
 			select {
@@ -74,7 +74,7 @@ func (p *Poller) poll(ctx context.Context, queues []string, wg *sync.WaitGroup, 
 				return
 
 			case <-ticker.C:
-				if err := p.pollTick(queues, jobs); err != nil {
+				if err := p.pollTick(ctx, queues, jobs); err != nil {
 					errors <- err
 				}
 			}
@@ -84,14 +84,8 @@ func (p *Poller) poll(ctx context.Context, queues []string, wg *sync.WaitGroup, 
 	return jobs
 }
 
-func (p *Poller) pollTick(queues []string, jobs chan<- *job.Job) error {
-	conn, err := p.pool.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-
-	job, err := p.getJob(conn, queues)
+func (p *Poller) pollTick(ctx context.Context, queues []string, jobs chan<- *job.Job) error {
+	job, err := p.getJob(ctx, queues)
 	if err != nil {
 		return err
 	}
@@ -101,9 +95,9 @@ func (p *Poller) pollTick(queues []string, jobs chan<- *job.Job) error {
 	return nil
 }
 
-func (p *Poller) getJob(conn db.Conn, queues []string) (*job.Job, error) {
+func (p *Poller) getJob(ctx context.Context, queues []string) (*job.Job, error) {
 	for _, queue := range queues {
-		res, err := conn.Do("LPOP", fmt.Sprintf("%s:queue:%s", p.Namespace, queue))
+		res, err := p.db.LPop(ctx, fmt.Sprintf("%s:queue:%s", p.Namespace, queue))
 		if err != nil {
 			return nil, err
 		}

@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
-	"github.com/snobb/goresq/pkg/db"
 	"github.com/snobb/goresq/pkg/db/mock"
 	"github.com/snobb/goresq/pkg/queue"
 	"github.com/snobb/goresq/test/assert"
@@ -203,44 +203,57 @@ func TestQueue_Enqueue(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var redisCmds []string
-
-			mockedConn := &mock.ConnMock{
-				CloseFunc: func() error {
-					redisCmds = append(redisCmds, "Conn::Close")
-					return nil
+			mockedAccessor := &mock.AccessorMock{
+				DecrFunc: func(ctx context.Context, key string) (int64, error) {
+					redisCmds = append(redisCmds, fmt.Sprintf("decr %s", key))
+					return 0, nil
 				},
-				DoFunc: func(commandName string, args ...interface{}) (interface{}, error) {
+				DelFunc: func(ctx context.Context, keys ...string) (int64, error) {
+					redisCmds = append(redisCmds, fmt.Sprintf("del %s", keys[0]))
+					return 0, nil
+				},
+				DoFunc: func(ctx context.Context, args ...any) (any, error) {
 					panic("mock out the Do method")
 				},
-				ErrFunc: func() error {
-					panic("mock out the Err method")
+				GetFunc: func(ctx context.Context, key string) (string, error) {
+					redisCmds = append(redisCmds, fmt.Sprintf("get %s", key))
+					return "", nil
 				},
-				FlushFunc: func() error {
-					panic("mock out the Flush method")
+				IncrFunc: func(ctx context.Context, key string) (int64, error) {
+					redisCmds = append(redisCmds, fmt.Sprintf("incr %s", key))
+					return 0, nil
 				},
-				ReceiveFunc: func() (interface{}, error) {
-					panic("mock out the Receive method")
+				LPopFunc: func(ctx context.Context, key string) (any, error) {
+					redisCmds = append(redisCmds, fmt.Sprintf("lpop %s", key))
+					return nil, nil
 				},
-				SendFunc: func(commandName string, args ...interface{}) error {
-					if tt.wantSendErr == 1 {
-						return fmt.Errorf("spanner")
-					}
-					tt.wantSendErr--
-					redisCmds = append(redisCmds, fmt.Sprintf("%s %s %s", commandName, args[0], args[1]))
-					return nil
+				LPushFunc: func(ctx context.Context, key string, value any) (any, error) {
+					redisCmds = append(redisCmds, fmt.Sprintf("lpush %s %v", key, value))
+					return nil, nil
+				},
+				RPopFunc: func(ctx context.Context, key string) (any, error) {
+					redisCmds = append(redisCmds, fmt.Sprintf("rpop %s", key))
+					return nil, nil
+				},
+				RPushFunc: func(ctx context.Context, key string, value any) (any, error) {
+					redisCmds = append(redisCmds, fmt.Sprintf("rpush %s %v", key, value))
+					return nil, nil
+				},
+				SAddFunc: func(ctx context.Context, key string, members ...any) (int64, error) {
+					redisCmds = append(redisCmds, fmt.Sprintf("sadd %s %v", key, members[0]))
+					return 0, nil
+				},
+				SRemFunc: func(ctx context.Context, key string, members ...any) (int64, error) {
+					redisCmds = append(redisCmds, fmt.Sprintf("srem %s %v", key, members[0]))
+					return 0, nil
+				},
+				SetFunc: func(ctx context.Context, key string, value any, exp time.Duration) (string, error) {
+					redisCmds = append(redisCmds, fmt.Sprintf("set %s %v %d", key, value, exp))
+					return "", nil
 				},
 			}
 
-			mockedPool := &mock.PoolerMock{
-				ConnFunc: func() (db.Conn, error) {
-					if tt.wantDbErr {
-						return nil, fmt.Errorf("db spanner")
-					}
-					return mockedConn, nil
-				},
-			}
-
-			q := queue.New(mockedPool)
+			q := queue.New(mockedAccessor)
 			var plugins []queue.Plugin
 			for _, p := range tt.plugins {
 				plugins = append(plugins, p)
